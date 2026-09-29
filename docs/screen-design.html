@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>タスク管理アプリ 画面イメージ</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --col: #ebecf0;
+    --text: #172b4d;
+    --sub: #5e6c84;
+    --line: #dfe1e6;
+    --accent: #0c66e4;
+    --danger-bg: #ffebe6;
+    --danger-line: #de350b;
+    --danger-text: #bf2600;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--text);
+    font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.6;
+  }
+  main { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 40px 0 6px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  p.lead, p.note { color: var(--sub); font-size: 13px; margin: 0 0 12px; }
+
+  /* 画面の枠 */
+  .screen { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .screen-bar { background: #dfe1e6; padding: 6px 12px; font-size: 12px; color: var(--sub); }
+  .board { padding: 16px; display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; }
+
+  .column { background: var(--col); border-radius: 8px; width: 240px; flex: none; padding: 10px; }
+  .col-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+  .col-head .menu { color: var(--sub); font-weight: normal; font-size: 12px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; box-shadow: 0 1px 1px rgba(9,30,66,.15); }
+  .card .title { font-size: 14px; font-weight: bold; }
+  .card .meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .card.overdue { background: var(--danger-bg); border: 2px solid var(--danger-line); }
+  .card.overdue .meta { color: var(--danger-text); font-weight: bold; }
+  .card.dragging { transform: rotate(3deg); box-shadow: 0 6px 12px rgba(9,30,66,.3); }
+  .btn-add { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; color: var(--sub); font-size: 13px; background: transparent; border: 0; }
+  .add-col { background: rgba(255,255,255,.6); border: 1px dashed #aaa; border-radius: 8px; width: 200px; flex: none; padding: 10px; font-size: 14px; color: var(--sub); }
+  .drop-zone { border: 2px dashed var(--accent); border-radius: 6px; height: 48px; margin-bottom: 8px; background: rgba(12,102,228,.08); }
+
+  /* ダイアログ */
+  .dialog { background: #fff; border: 1px solid var(--line); border-radius: 8px; max-width: 420px; padding: 16px; box-shadow: 0 8px 20px rgba(9,30,66,.25); }
+  .dialog h3 { margin: 0 0 10px; font-size: 16px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+  .field .req { color: var(--danger-line); font-size: 11px; margin-left: 4px; }
+  .field .input { border: 1px solid #b6bcc8; border-radius: 4px; padding: 6px 8px; font-size: 13px; background: #fafbfc; min-height: 32px; }
+  .field .input.area { min-height: 72px; }
+  .field .hint { font-size: 11px; color: var(--sub); }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .b { padding: 6px 14px; border-radius: 4px; font-size: 13px; border: 1px solid var(--line); background: #f4f5f7; }
+  .b.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .b.danger { background: var(--danger-line); border-color: var(--danger-line); color: #fff; }
+
+  .grid2 { display: flex; gap: 16px; flex-wrap: wrap; }
+  .grid2 > div { flex: 1 1 320px; }
+
+  /* 凡例 */
+  .callouts { font-size: 13px; padding-left: 20px; margin: 10px 0 0; }
+  .callouts li { margin-bottom: 4px; }
+  .num { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; text-align: center; line-height: 18px; font-weight: bold; }
+
+  /* フロー */
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+  .flow .step { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+  .flow .arrow { color: var(--sub); }
+
+  @media (max-width: 600px) { .grid2 > div { flex-basis: 100%; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>タスク管理アプリ 画面イメージ</h1>
+  <p class="lead">要件定義書(requirements.md)の補足資料です。実際のデザインは開発中に調整することがあります。</p>
+
+  <h2>1. ログイン画面</h2>
+  <p class="note">起動直後に表示されます。初回はアカウント登録、2回目以降はログインを行います。</p>
+  <div class="grid2">
+    <div class="dialog">
+      <h3>ログイン</h3>
+      <div class="field"><label>ユーザー名<span class="req">必須</span></label><div class="input">yamada</div></div>
+      <div class="field"><label>パスワード<span class="req">必須</span></label><div class="input">••••••••</div></div>
+      <div class="actions" style="justify-content:space-between;">
+        <span class="b" style="border:0;background:none;color:var(--accent);">アカウント登録はこちら</span>
+        <span class="b primary">ログイン</span>
+      </div>
+    </div>
+    <div class="dialog">
+      <h3>アカウント登録</h3>
+      <div class="field"><label>ユーザー名<span class="req">必須</span></label><div class="input"></div><div class="hint">他の人と重複しない名前</div></div>
+      <div class="field"><label>パスワード<span class="req">必須</span></label><div class="input"></div></div>
+      <div class="field"><label>パスワード(確認)<span class="req">必須</span></label><div class="input"></div></div>
+      <div class="actions"><span class="b">ログインに戻る</span><span class="b primary">登録する</span></div>
+    </div>
+  </div>
+  <ul class="callouts">
+    <li><span class="num">1</span> 登録したアカウントごとに、専用のボード(列・カード)が作られます。</li>
+    <li><span class="num">2</span> パスワードを忘れた場合の自動復旧はありません(要件定義書 9.2章参照)。</li>
+  </ul>
+
+  <h2>2. メイン画面(通常時)</h2>
+  <p class="note">3つの列にカードが並びます。期限を過ぎたカードは赤く表示されます。</p>
+  <div class="screen">
+    <div class="screen-bar">タスク管理アプリ — index.html</div>
+    <div class="board">
+      <div class="column">
+        <div class="col-head"><span>未着手</span><span class="menu">︙</span></div>
+        <div class="card"><div class="title">見積書を作成</div><div class="meta">期限: 2026/10/10</div></div>
+        <div class="card overdue"><div class="title">資料の確認</div><div class="meta">期限: 2026/09/25 (期限切れ)</div></div>
+        <button class="btn-add">＋ タスク追加</button>
+      </div>
+      <div class="column">
+        <div class="col-head"><span>進行中</span><span class="menu">︙</span></div>
+        <div class="card"><div class="title">打ち合わせ準備</div><div class="meta">期限: 2026/10/03</div></div>
+        <button class="btn-add">＋ タスク追加</button>
+      </div>
+      <div class="column">
+        <div class="col-head"><span>完了</span><span class="menu">︙</span></div>
+        <div class="card"><div class="title">メール返信</div><div class="meta">期限: 2026/09/20</div></div>
+        <button class="btn-add">＋ タスク追加</button>
+      </div>
+      <div class="add-col">＋ 列を追加</div>
+    </div>
+  </div>
+  <ul class="callouts">
+    <li><span class="num">1</span> 赤い背景・赤い枠のカードが「期限切れ」です(期限が今日より前)。</li>
+    <li><span class="num">2</span> 「完了」列のカードは、期限を過ぎていても赤くなりません。</li>
+    <li><span class="num">3</span> 列の「︙」から列の削除ができます。</li>
+  </ul>
+
+  <h2>3. カードの移動(ドラッグ&amp;ドロップ)</h2>
+  <p class="note">カードを掴んで別の列へ移すと、移動先の列に入ります。</p>
+  <div class="screen">
+    <div class="board">
+      <div class="column">
+        <div class="col-head"><span>未着手</span></div>
+        <div class="card"><div class="title">見積書を作成</div><div class="meta">期限: 2026/10/10</div></div>
+      </div>
+      <div class="column">
+        <div class="col-head"><span>進行中</span></div>
+        <div class="drop-zone"></div>
+        <div class="card"><div class="title">打ち合わせ準備</div><div class="meta">期限: 2026/10/03</div></div>
+      </div>
+      <div class="column" style="background:none;">
+        <div class="card dragging"><div class="title">資料の確認</div><div class="meta">← 掴んで移動中</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>4. カードの追加・編集ダイアログ</h2>
+  <p class="note">「＋ タスク追加」またはカードのクリックで表示されます。</p>
+  <div class="grid2">
+    <div class="dialog">
+      <h3>タスクを追加</h3>
+      <div class="field"><label>タイトル<span class="req">必須</span></label><div class="input">見積書を作成</div><div class="hint">1〜50文字</div></div>
+      <div class="field"><label>詳細説明文</label><div class="input area"></div><div class="hint">500文字まで(任意)</div></div>
+      <div class="field"><label>期限日</label><div class="input">2026/10/10</div><div class="hint">任意</div></div>
+      <div class="actions"><span class="b">キャンセル</span><span class="b primary">保存</span></div>
+    </div>
+    <div class="dialog">
+      <h3>タスクを編集</h3>
+      <div class="field"><label>タイトル<span class="req">必須</span></label><div class="input">見積書を作成</div></div>
+      <div class="field"><label>詳細説明文</label><div class="input area">A社向け。先方の希望金額を確認する。</div></div>
+      <div class="field"><label>期限日</label><div class="input">2026/10/10</div></div>
+      <div class="hint" style="margin-bottom:8px;">作成日時: 2026/09/28 10:00(変更できません)</div>
+      <div class="actions"><span class="b danger" style="margin-right:auto;">削除</span><span class="b">キャンセル</span><span class="b primary">保存</span></div>
+    </div>
+  </div>
+
+  <h2>5. 確認ダイアログ</h2>
+  <div class="grid2">
+    <div class="dialog">
+      <h3>カードを削除しますか?</h3>
+      <p style="font-size:13px;margin:0;">「見積書を作成」を削除します。削除後は元に戻せません。</p>
+      <div class="actions"><span class="b">キャンセル</span><span class="b danger">削除する</span></div>
+    </div>
+    <div class="dialog">
+      <h3>列を削除しますか?</h3>
+      <p style="font-size:13px;margin:0;">「未着手」を削除します。列の中の2件のカードも一緒に削除されます。</p>
+      <div class="actions"><span class="b">キャンセル</span><span class="b danger">削除する</span></div>
+    </div>
+  </div>
+
+  <h2>6. 基本的な操作の流れ</h2>
+  <div class="flow">
+    <span class="step">アプリを開く</span><span class="arrow">→</span>
+    <span class="step">ログイン(初回は登録)</span><span class="arrow">→</span>
+    <span class="step">「＋ タスク追加」</span><span class="arrow">→</span>
+    <span class="step">タイトル等を入力して保存</span><span class="arrow">→</span>
+    <span class="step">作業が進んだらカードを次の列へ移動</span><span class="arrow">→</span>
+    <span class="step">期限切れは赤く表示</span><span class="arrow">→</span>
+    <span class="step">不要になったら削除</span><span class="arrow">→</span>
+    <span class="step">ログアウト</span>
+  </div>
+</main>
+</body>
+</html>
