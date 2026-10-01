@@ -1,0 +1,204 @@
+/* タスク管理アプリ 共通スタイル
+   docs/screen-design.html のモックアップを踏まえた実装用スタイル */
+
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --col: #ebecf0;
+  --text: #172b4d;
+  --sub: #5e6c84;
+  --line: #dfe1e6;
+  --accent: #0c66e4;
+  --accent-hover: #0955c5;
+  --danger-bg: #ffebe6;
+  --danger-line: #de350b;
+  --danger-text: #bf2600;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+button, input, textarea {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* ===== ヘッダー ===== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.app-header h1 { font-size: 16px; margin: 0; }
+.app-header .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--sub); }
+.app-header .user-info strong { color: var(--text); }
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  background: #f4f5f7;
+  cursor: pointer;
+}
+.btn:hover { background: #e4e6ea; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { background: var(--danger-line); border-color: var(--danger-line); color: #fff; }
+.btn.danger:hover { background: #bf2600; }
+.btn.link { border: 0; background: none; color: var(--accent); padding: 4px; }
+
+/* ===== ボード(メイン画面) ===== */
+.board {
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.column {
+  background: var(--col);
+  border-radius: 8px;
+  width: 260px;
+  flex: none;
+  padding: 10px;
+}
+.column.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+
+.col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+.col-head .col-menu-btn {
+  border: 0; background: none; color: var(--sub); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+}
+.col-head .col-menu-btn:hover { background: rgba(9,30,66,.1); }
+
+.card-list { min-height: 8px; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 1px rgba(9,30,66,.15);
+  cursor: grab;
+}
+.card .title { font-size: 14px; font-weight: bold; word-break: break-word; }
+.card .meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+.card.overdue { background: var(--danger-bg); border: 2px solid var(--danger-line); }
+.card.overdue .meta { color: var(--danger-text); font-weight: bold; }
+.card.dragging { opacity: .4; }
+
+.btn-add {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 4px;
+  color: var(--sub);
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.btn-add:hover { background: rgba(9,30,66,.1); }
+
+.add-column {
+  background: rgba(255,255,255,.6);
+  border: 1px dashed #aaa;
+  border-radius: 8px;
+  width: 220px;
+  flex: none;
+  padding: 10px;
+}
+.add-column button {
+  width: 100%; text-align: left; border: 0; background: transparent; color: var(--sub); font-size: 14px; cursor: pointer; padding: 4px;
+}
+
+/* ===== ダイアログ(モーダル) ===== */
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-width: 420px;
+  width: 90vw;
+  padding: 16px;
+  box-shadow: 0 8px 20px rgba(9,30,66,.25);
+}
+dialog::backdrop { background: rgba(9,30,66,.4); }
+dialog h3 { margin: 0 0 10px; font-size: 16px; }
+
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+.field .req { color: var(--danger-line); font-size: 11px; margin-left: 4px; }
+.field input[type="text"],
+.field input[type="password"],
+.field input[type="date"],
+.field textarea {
+  width: 100%;
+  border: 1px solid #b6bcc8;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: #fafbfc;
+}
+.field textarea { min-height: 72px; resize: vertical; }
+.field .hint { font-size: 11px; color: var(--sub); margin-top: 2px; }
+.field .error { font-size: 11px; color: var(--danger-text); margin-top: 2px; display: none; }
+.field.has-error input, .field.has-error textarea { border-color: var(--danger-line); }
+.field.has-error .error { display: block; }
+
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.dialog-actions .btn.danger { margin-right: auto; }
+
+/* ===== ログイン画面 ===== */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.login-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 2px 8px rgba(9,30,66,.1);
+}
+.login-box h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+.login-box p.lead { font-size: 12px; color: var(--sub); text-align: center; margin: 0 0 18px; }
+.login-box .switch { text-align: center; font-size: 12px; margin-top: 10px; }
+.login-box .form-error { font-size: 13px; color: var(--danger-text); background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; display: none; }
+.login-box .form-error.show { display: block; }
+
+/* ===== 空の状態・トースト ===== */
+.empty-note { font-size: 12px; color: var(--sub); padding: 8px; text-align: center; }
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: #fff; padding: 8px 16px; border-radius: 6px;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+
+@media (max-width: 480px) {
+  .column { width: 85vw; }
+}
