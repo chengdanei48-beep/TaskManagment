@@ -47,6 +47,17 @@
       <div class="hint">任意</div>
     </div>
 
+    <div class="field">
+      <label id="card-priority-label">重要度</label>
+      <div class="priority-picker" role="radiogroup" aria-labelledby="card-priority-label">
+        <button type="button" class="priority-option" data-priority="">なし</button>
+        <button type="button" class="priority-option priority-low" data-priority="low">低</button>
+        <button type="button" class="priority-option priority-medium" data-priority="medium">中</button>
+        <button type="button" class="priority-option priority-high" data-priority="high">重</button>
+      </div>
+      <input type="hidden" id="card-priority" name="priority" value="">
+    </div>
+
     <div class="hint" id="card-created-at" style="margin-bottom:8px;"></div>
 
     <div class="dialog-actions">

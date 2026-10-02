@@ -140,7 +140,7 @@ const Store = (() => {
     saveBoard(board);
   }
 
-  function addCard(columnId, { title, description, dueDate }) {
+  function addCard(columnId, { title, description, dueDate, priority }) {
     const board = getBoard();
     if (!board) return { ok: false, error: "ログインしていません。" };
     const column = board.columns.find((c) => c.id === columnId);
@@ -150,13 +150,14 @@ const Store = (() => {
       title,
       description: description || "",
       dueDate: dueDate || "",
+      priority: priority || "",
       createdAt: new Date().toISOString(),
     });
     saveBoard(board);
     return { ok: true };
   }
 
-  function updateCard(cardId, { title, description, dueDate }) {
+  function updateCard(cardId, { title, description, dueDate, priority }) {
     const board = getBoard();
     if (!board) return;
     for (const column of board.columns) {
@@ -165,6 +166,7 @@ const Store = (() => {
         card.title = title;
         card.description = description || "";
         card.dueDate = dueDate || "";
+        card.priority = priority || "";
         break;
       }
     }
@@ -180,7 +182,10 @@ const Store = (() => {
     saveBoard(board);
   }
 
-  function moveCard(cardId, targetColumnId) {
+  /** カードを移動・並び替えする(要件定義書 T-4)。
+   *  同じ列内への移動であれば、自由な並び替えになる。
+   *  insertIndex を省略した場合は、列の末尾に追加する。 */
+  function moveCard(cardId, targetColumnId, insertIndex) {
     const board = getBoard();
     if (!board) return;
     let moving = null;
@@ -193,7 +198,46 @@ const Store = (() => {
     }
     if (!moving) return;
     const target = board.columns.find((c) => c.id === targetColumnId);
-    if (target) target.cards.push(moving);
+    if (!target) return;
+    const idx =
+      typeof insertIndex === "number" && insertIndex >= 0 && insertIndex <= target.cards.length
+        ? insertIndex
+        : target.cards.length;
+    target.cards.splice(idx, 0, moving);
+    saveBoard(board);
+  }
+
+  // 並び替えボタン(優先度順・期限順)で使う優先度の順位。数字が小さいほど先頭。
+  const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+
+  /** 列内のカードを重要度順(重→中→低→未設定)に並び替える(要件定義書 T-5)。
+   *  Array.prototype.sort は安定ソートのため、重要度が同じカード同士は
+   *  並び替え前の順序(自由な並び替えの結果)を保つ。 */
+  function sortColumnByPriority(columnId) {
+    const board = getBoard();
+    if (!board) return;
+    const column = board.columns.find((c) => c.id === columnId);
+    if (!column) return;
+    column.cards.sort((a, b) => {
+      const ra = a.priority ? PRIORITY_RANK[a.priority] : 3;
+      const rb = b.priority ? PRIORITY_RANK[b.priority] : 3;
+      return ra - rb;
+    });
+    saveBoard(board);
+  }
+
+  /** 列内のカードを期限が近い順に並び替える(未設定は最後)(要件定義書 T-5)。 */
+  function sortColumnByDueDate(columnId) {
+    const board = getBoard();
+    if (!board) return;
+    const column = board.columns.find((c) => c.id === columnId);
+    if (!column) return;
+    column.cards.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+    });
     saveBoard(board);
   }
 
@@ -209,6 +253,8 @@ const Store = (() => {
     updateCard,
     deleteCard,
     moveCard,
+    sortColumnByPriority,
+    sortColumnByDueDate,
     MAX_COLUMNS,
   };
 })();
@@ -226,6 +272,12 @@ function isOverdue(card, columnName) {
   today.setHours(0, 0, 0, 0);
   const due = new Date(card.dueDate + "T00:00:00");
   return due < today;
+}
+
+const PRIORITY_LABELS = { high: "重", medium: "中", low: "低" };
+
+function priorityLabel(priority) {
+  return PRIORITY_LABELS[priority] || "";
 }
 
 function formatDate(isoDateOrDateTime) {
@@ -348,8 +400,21 @@ function initBoardPage() {
   const cardDueInput = document.getElementById("card-due-date");
   const cardCreatedAt = document.getElementById("card-created-at");
   const cardDeleteBtn = document.getElementById("card-delete-btn");
+  const cardPriorityInput = document.getElementById("card-priority");
+  const priorityOptions = Array.from(document.querySelectorAll(".priority-option"));
   let editingCardId = null;
   let addingToColumnId = null;
+
+  function setSelectedPriority(priority) {
+    cardPriorityInput.value = priority || "";
+    priorityOptions.forEach((btn) => {
+      btn.classList.toggle("selected", btn.dataset.priority === (priority || ""));
+    });
+  }
+
+  priorityOptions.forEach((btn) => {
+    btn.addEventListener("click", () => setSelectedPriority(btn.dataset.priority));
+  });
 
   function openAddCardDialog(columnId) {
     editingCardId = null;
@@ -358,6 +423,7 @@ function initBoardPage() {
     cardForm.reset();
     setFieldError(cardTitleField, "");
     setFieldError(cardDescField, "");
+    setSelectedPriority("");
     cardCreatedAt.textContent = "";
     cardDeleteBtn.hidden = true;
     cardDialog.showModal();
@@ -373,6 +439,7 @@ function initBoardPage() {
     cardTitleInput.value = card.title;
     cardDescInput.value = card.description || "";
     cardDueInput.value = card.dueDate || "";
+    setSelectedPriority(card.priority || "");
     cardCreatedAt.textContent = `作成日時: ${formatDateTime(card.createdAt)}(変更できません)`;
     cardDeleteBtn.hidden = false;
     cardDialog.showModal();
@@ -386,6 +453,7 @@ function initBoardPage() {
     const title = cardTitleInput.value.trim();
     const description = cardDescInput.value;
     const dueDate = cardDueInput.value;
+    const priority = cardPriorityInput.value;
 
     let hasError = false;
     if (!title || title.length > 50) {
@@ -403,10 +471,10 @@ function initBoardPage() {
     if (hasError) return;
 
     if (editingCardId) {
-      Store.updateCard(editingCardId, { title, description, dueDate }); // TODO(API): PUT /api/cards/:id
+      Store.updateCard(editingCardId, { title, description, dueDate, priority }); // TODO(API): PUT /api/cards/:id
       showToast("タスクを更新しました。");
     } else {
-      const result = Store.addCard(addingToColumnId, { title, description, dueDate }); // TODO(API): POST /api/cards
+      const result = Store.addCard(addingToColumnId, { title, description, dueDate, priority }); // TODO(API): POST /api/cards
       if (!result.ok) {
         showToast(result.error);
         return;
@@ -509,8 +577,48 @@ function initBoardPage() {
       });
       colEl.appendChild(head);
 
+      // 並び替えボタン(優先度順・期限順)(要件定義書 T-5)
+      const sortRow = document.createElement("div");
+      sortRow.className = "col-sort";
+      const sortByPriorityBtn = document.createElement("button");
+      sortByPriorityBtn.type = "button";
+      sortByPriorityBtn.className = "sort-btn";
+      sortByPriorityBtn.textContent = "優先度順";
+      sortByPriorityBtn.addEventListener("click", () => {
+        Store.sortColumnByPriority(column.id); // TODO(API): PUT /api/columns/:id/sort?by=priority
+        renderBoard();
+      });
+      const sortByDueBtn = document.createElement("button");
+      sortByDueBtn.type = "button";
+      sortByDueBtn.className = "sort-btn";
+      sortByDueBtn.textContent = "期限順";
+      sortByDueBtn.addEventListener("click", () => {
+        Store.sortColumnByDueDate(column.id); // TODO(API): PUT /api/columns/:id/sort?by=due
+        renderBoard();
+      });
+      sortRow.appendChild(sortByPriorityBtn);
+      sortRow.appendChild(sortByDueBtn);
+      colEl.appendChild(sortRow);
+
       const listEl = document.createElement("div");
       listEl.className = "card-list";
+
+      /** ドロップ先のカード一覧の中で、マウスのY座標から挿入位置を求める。
+       *  ドラッグ中のカード自身は計算対象から除く(自由な並び替え時に位置がずれるため)。 */
+      function calcInsertIndex(clientY, draggingCardId) {
+        const cardEls = Array.from(listEl.querySelectorAll(".card")).filter(
+          (el) => el.dataset.cardId !== draggingCardId
+        );
+        for (let i = 0; i < cardEls.length; i++) {
+          const rect = cardEls[i].getBoundingClientRect();
+          if (clientY < rect.top + rect.height / 2) {
+            const cardId = cardEls[i].dataset.cardId;
+            return column.cards.findIndex((c) => c.id === cardId);
+          }
+        }
+        return column.cards.length;
+      }
+
       listEl.addEventListener("dragover", (e) => {
         e.preventDefault();
         colEl.classList.add("drag-over");
@@ -521,7 +629,8 @@ function initBoardPage() {
         colEl.classList.remove("drag-over");
         const cardId = e.dataTransfer.getData("text/plain");
         if (cardId) {
-          Store.moveCard(cardId, column.id); // TODO(API): PUT /api/cards/:id/move
+          const insertIndex = calcInsertIndex(e.clientY, cardId);
+          Store.moveCard(cardId, column.id, insertIndex); // TODO(API): PUT /api/cards/:id/move
           renderBoard();
         }
       });
@@ -536,7 +645,13 @@ function initBoardPage() {
           ? `期限: ${formatDate(card.dueDate)}` + (isOverdue(card, column.name) ? "(期限切れ)" : "")
           : "期限: なし";
 
-        cardEl.innerHTML = `<div class="title"></div><div class="meta"></div>`;
+        const badgeHtml = card.priority
+          ? `<span class="priority-badge priority-${card.priority}"></span>`
+          : "";
+        cardEl.innerHTML = `${badgeHtml}<div class="title"></div><div class="meta"></div>`;
+        if (card.priority) {
+          cardEl.querySelector(".priority-badge").textContent = priorityLabel(card.priority);
+        }
         cardEl.querySelector(".title").textContent = card.title;
         cardEl.querySelector(".meta").textContent = metaText;
 

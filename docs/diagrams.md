@@ -1,6 +1,6 @@
 # タスク管理アプリ 遷移図・データフロー・ER図(DB版)
 
-要件定義書([requirements.md](requirements.md) v2.0)の補足資料です。データはPC内のローカルサーバー経由でデータベース(SQLite)に保存します。
+要件定義書([requirements.md](requirements.md) v2.1)の補足資料です。データはPC内のローカルサーバー経由でデータベース(SQLite)に保存します。
 GitHub 上でこのファイルを開くと、以下の図がそのまま表示されます。
 
 画面のモックアップ(見た目)は [screen-design.html](screen-design.html) を参照してください。
@@ -98,8 +98,9 @@ erDiagram
         string title "1〜50文字、必須"
         string description "500文字まで、任意"
         date due_date "任意"
+        string priority "high/medium/low、未設定可"
         datetime created_at "自動記録"
-        int position "列内の表示順"
+        int position "列内の表示順(自由な並び替え・並び替えボタンの結果)"
     }
 ```
 
@@ -112,4 +113,5 @@ erDiagram
 | cards | title | 1〜50文字、必須 |
 | cards | description | 500文字まで、任意 |
 | cards | due_date | 任意。未入力なら期限切れ判定なし |
+| cards | priority | high(重)/medium(中)/low(低)/未設定。カード上に色分けバッジで表示 |
 | cards | column_id | columns.id への外部キー |

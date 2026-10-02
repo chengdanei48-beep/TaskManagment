@@ -89,7 +89,55 @@ button, input, textarea {
 }
 .col-head .col-menu-btn:hover { background: rgba(9,30,66,.1); }
 
+.col-sort { display: flex; gap: 4px; margin-bottom: 8px; }
+.col-sort .sort-btn {
+  flex: 1;
+  font-size: 11px;
+  padding: 3px 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--sub);
+  cursor: pointer;
+}
+.col-sort .sort-btn:hover { background: #eef0f3; color: var(--text); }
+
 .card-list { min-height: 8px; }
+
+/* カードの重要度バッジ */
+.priority-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  border: 1px solid;
+}
+.priority-badge.priority-high   { background: #ffebe6; color: #bf2600; border-color: #de350b; }
+.priority-badge.priority-medium { background: #fff0e0; color: #974f0c; border-color: #ff8b00; }
+.priority-badge.priority-low    { background: #fffae6; color: #7f6a00; border-color: #ffc400; }
+
+/* カード追加・編集ダイアログ内の重要度選択ボタン */
+.priority-picker { display: flex; gap: 6px; }
+.priority-picker .priority-option {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: #fafbfc;
+  color: var(--sub);
+  cursor: pointer;
+}
+.priority-picker .priority-option.priority-high   { border-color: #de350b; color: #bf2600; }
+.priority-picker .priority-option.priority-medium { border-color: #ff8b00; color: #974f0c; }
+.priority-picker .priority-option.priority-low    { border-color: #ffc400; color: #7f6a00; }
+.priority-picker .priority-option.selected { color: #fff; }
+.priority-picker .priority-option.selected[data-priority=""]       { background: var(--sub); border-color: var(--sub); }
+.priority-picker .priority-option.selected[data-priority="high"]   { background: #de350b; }
+.priority-picker .priority-option.selected[data-priority="medium"] { background: #ff8b00; }
+.priority-picker .priority-option.selected[data-priority="low"]    { background: #ffc400; color: #594800; }
 
 .card {
   background: #fff;
