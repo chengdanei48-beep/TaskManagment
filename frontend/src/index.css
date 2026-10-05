@@ -1,0 +1,148 @@
+:root {
+  --bg: #f4f5f7;
+  --col: #ebecf0;
+  --text: #172b4d;
+  --sub: #5e6c84;
+  --line: #dfe1e6;
+  --accent: #0c66e4;
+  --danger-bg: #ffebe6;
+  --danger-line: #de350b;
+  --danger-text: #bf2600;
+  font-family: system-ui, 'Hiragino Sans', 'Yu Gothic UI', Meiryo, sans-serif;
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.page {
+  padding: 24px 16px 64px;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 16px;
+}
+
+.search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-bar input,
+.search-bar select {
+  border: 1px solid #b6bcc8;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
+  min-height: 32px;
+  background: #fafbfc;
+  color: inherit;
+}
+
+.search-bar input {
+  width: 240px;
+}
+
+.board {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.column {
+  background: var(--col);
+  border-radius: 8px;
+  width: 240px;
+  flex: none;
+  padding: 10px;
+}
+
+.col-head {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.count {
+  color: var(--sub);
+  font-weight: normal;
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--sub);
+  font-size: 13px;
+  margin: 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 1px rgba(9, 30, 66, 0.15);
+}
+
+.card-title {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 4px;
+}
+
+.card.overdue {
+  background: var(--danger-bg);
+  border: 2px solid var(--danger-line);
+}
+
+.card.overdue .meta {
+  color: var(--danger-text);
+  font-weight: bold;
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.badge-high {
+  background: #de350b;
+}
+
+.badge-medium {
+  background: #b65c02;
+}
+
+.badge-low {
+  background: #1f845a;
+}
+
+.status {
+  color: var(--sub);
+  font-size: 13px;
+}
+
+.error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-text);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
