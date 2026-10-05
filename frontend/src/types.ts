@@ -17,6 +17,11 @@ export interface BoardColumn {
   position: number
 }
 
+export interface User {
+  id: number
+  username: string
+}
+
 export interface CardFilter {
   columnId?: number
   priority?: Priority

@@ -147,3 +147,99 @@ h1 {
   padding: 8px 12px;
   font-size: 13px;
 }
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sub);
+}
+
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: #f4f5f7;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.link {
+  border: 0;
+  background: none;
+  color: var(--accent);
+}
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 64px 16px;
+}
+
+.auth-form {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 8px 20px rgba(9, 30, 66, 0.12);
+}
+
+.auth-form h1 {
+  margin: 0;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.auth-form input {
+  border: 1px solid #b6bcc8;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  min-height: 32px;
+  background: #fafbfc;
+  color: inherit;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.auth-form .error {
+  margin: 0;
+}
