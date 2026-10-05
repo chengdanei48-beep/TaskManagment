@@ -5,12 +5,16 @@ import com.taskmanagement.backend.dto.CardRequest;
 import com.taskmanagement.backend.dto.CardResponse;
 import com.taskmanagement.backend.entity.BoardColumn;
 import com.taskmanagement.backend.entity.Card;
+import com.taskmanagement.backend.entity.Label;
 import com.taskmanagement.backend.entity.Priority;
 import com.taskmanagement.backend.repository.BoardColumnRepository;
 import com.taskmanagement.backend.repository.CardRepository;
+import com.taskmanagement.backend.repository.LabelRepository;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +28,15 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final BoardColumnRepository boardColumnRepository;
+    private final LabelRepository labelRepository;
 
-    public CardService(CardRepository cardRepository, BoardColumnRepository boardColumnRepository) {
+    public CardService(
+            CardRepository cardRepository,
+            BoardColumnRepository boardColumnRepository,
+            LabelRepository labelRepository) {
         this.cardRepository = cardRepository;
         this.boardColumnRepository = boardColumnRepository;
+        this.labelRepository = labelRepository;
     }
 
     public List<CardResponse> search(Long userId, Long columnId, Priority priority, String keyword) {
@@ -56,6 +65,7 @@ public class CardService {
         card.setColumn(column);
         card.setPosition(cardRepository.maxPositionInColumn(column.getId()) + 1);
         apply(card, request);
+        applyLabels(userId, card, request);
         return CardResponse.from(cardRepository.save(card));
     }
 
@@ -64,6 +74,7 @@ public class CardService {
         validate(request);
         return cardRepository.findByIdAndColumnUserId(id, userId).map(card -> {
             apply(card, request);
+            applyLabels(userId, card, request);
             return CardResponse.from(card);
         });
     }
@@ -141,6 +152,19 @@ public class CardService {
         card.setDescription(description == null || description.isBlank() ? null : description);
         card.setDueDate(request.dueDate());
         card.setPriority(request.priority());
+    }
+
+    /** labelIds が null なら何もしない。指定されたら置き換える。自分のものでないラベルがあれば404。 */
+    private void applyLabels(Long userId, Card card, CardRequest request) {
+        if (request.labelIds() == null) {
+            return;
+        }
+        Set<Long> ids = new LinkedHashSet<>(request.labelIds());
+        List<Label> labels = ids.isEmpty() ? List.of() : labelRepository.findByIdInAndUserId(ids, userId);
+        if (labels.size() != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "ラベルが見つかりません");
+        }
+        card.setLabels(new LinkedHashSet<>(labels));
     }
 
     private static void validate(CardRequest request) {
