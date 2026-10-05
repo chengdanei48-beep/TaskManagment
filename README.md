@@ -29,6 +29,8 @@ java -jar target/backend-0.0.1-SNAPSHOT.jar
 - `npm run dev` を起動したままだと `npm ci` が失敗することがあります。開発サーバーを止めてからビルドしてください。
 - `-Pbundle-frontend` を付けない通常の `./mvnw test` / `./mvnw package` では、フロントエンドのビルドは行いません。
 
+利用者向けのセットアップ手順(JDK・PostgreSQLの導入、DB作成、jarの起動)は [SETUP.md](SETUP.md) を参照してください。
+
 ### seedデータについて
 
 - 開発用のseedデータ(`backend/src/main/resources/db/seed/`)は、`dev` プロファイルのときだけ投入されます。`./mvnw spring-boot:run` と `./mvnw test` は自動で `dev` になります。
