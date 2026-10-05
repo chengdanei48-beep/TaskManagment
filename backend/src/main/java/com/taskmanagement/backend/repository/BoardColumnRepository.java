@@ -8,5 +8,7 @@ public interface BoardColumnRepository extends JpaRepository<BoardColumn, Long> 
 
     List<BoardColumn> findByUserIdOrderByPosition(Long userId);
 
+    List<BoardColumn> findAllByOrderByPosition();
+
     int countByUserId(Long userId);
 }
