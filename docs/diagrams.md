@@ -1,6 +1,6 @@
 # タスク管理アプリ 遷移図・データフロー・ER図(DB版)
 
-要件定義書([requirements.md](requirements.md) v3.1)の補足資料です。データはPC内のバックエンド(Java / Spring Boot)経由でデータベース(PostgreSQL)に保存します。
+要件定義書([requirements.md](requirements.md) v3.2)の補足資料です。データはPC内のバックエンド(Java / Spring Boot)経由でデータベース(PostgreSQL)に保存します。
 GitHub 上でこのファイルを開くと、以下の図がそのまま表示されます。
 
 画面のモックアップ(見た目)は [screen-design.html](screen-design.html) を参照してください。

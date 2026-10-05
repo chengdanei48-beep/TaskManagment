@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 文書バージョン | 3.1 |
+| 文書バージョン | 3.2 |
 | 作成日 | 2026-10-02 |
 | 作成者 | Makoto oouchi |
 | 提供形態 | 無償提供 |
@@ -17,6 +17,7 @@
 | 2.1 | 2026-10-02 | カードの重要度(3段階)と色分け表示を追加。列内の自由な並び替え(ドラッグ)と、優先度順・期限順の並び替えボタンを追加 |
 | 3.0 | 2026-10-02 | 技術スタックを変更。バックエンド: Node.js → Java(Spring Boot)。フロントエンド: 素のJavaScript → React(Vite)。データベース: SQLite → PostgreSQL。機能要件に変更はない |
 | 3.1 | 2026-10-05 | 実装に合わせて表記を修正。実行環境を Java(JDK 25)・Spring Boot 4.x に、アクセス先を `http://localhost:8080` に変更。セットアップ手順(SETUP.md)を追加。機能要件に変更はない |
+| 3.2 | 2026-10-05 | フロントエンドを React 18 → React 19、言語を TypeScript 7 に更新(最新版を採用)。機能要件に変更はない |
 
 ---
 
@@ -251,7 +252,7 @@ TaskManagment/
 | データベースアクセス | Spring Data JPA(Hibernate) | PostgreSQL用のJDBCドライバを使用 |
 | データベース | PostgreSQL | テーブル定義は Flyway で管理 |
 | 認証 | Spring Security(セッション方式)+ BCryptによるパスワードハッシュ化 | L-5の要件に対応 |
-| フロントエンド | React 18(Vite でビルド) | Next.js は使用しない |
+| フロントエンド | React 19(Vite でビルド。言語は TypeScript 7) | Next.js は使用しない |
 | 画面遷移 | React Router | ログイン画面・メイン画面の切り替え |
 | API通信 | REST API(JSON)。ブラウザ側は標準の fetch を使用 | 追加の通信ライブラリは使用しない |
 
