@@ -6,7 +6,7 @@ export interface Card {
   title: string
   description: string | null
   dueDate: string | null
-  priority: Priority
+  priority: Priority | null
   position: number
   createdAt: string
 }
