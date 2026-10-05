@@ -14,19 +14,30 @@ function todayString(): string {
 }
 
 // 「完了」列のカードは期限を過ぎていても強調しない (要件 D-3)
-export function Card({
-  card,
-  done,
-  onClick,
-}: {
+interface Props {
   card: CardData
   done: boolean
+  dragging: boolean
   onClick: () => void
-}) {
+  onDragStart: () => void
+  onDragEnd: () => void
+}
+
+export function Card({ card, done, dragging, onClick, onDragStart, onDragEnd }: Props) {
   const overdue = !done && card.dueDate !== null && card.dueDate < todayString()
+  const className = ['card', overdue && 'overdue', dragging && 'dragging'].filter(Boolean).join(' ')
   return (
     <div
-      className={overdue ? 'card overdue' : 'card'}
+      className={className}
+      data-card-id={card.id}
+      draggable
+      onDragStart={(e) => {
+        // Firefox はデータを設定しないとドラッグが始まらない
+        e.dataTransfer.setData('text/plain', String(card.id))
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
       role="button"
       tabIndex={0}
       onClick={onClick}
