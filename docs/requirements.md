@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 文書バージョン | 3.2 |
+| 文書バージョン | 3.3 |
 | 作成日 | 2026-10-02 |
 | 作成者 | Makoto oouchi |
 | 提供形態 | 無償提供 |
@@ -18,6 +18,7 @@
 | 3.0 | 2026-10-02 | 技術スタックを変更。バックエンド: Node.js → Java(Spring Boot)。フロントエンド: 素のJavaScript → React(Vite)。データベース: SQLite → PostgreSQL。機能要件に変更はない |
 | 3.1 | 2026-10-05 | 実装に合わせて表記を修正。実行環境を Java(JDK 25)・Spring Boot 4.x に、アクセス先を `http://localhost:8080` に変更。セットアップ手順(SETUP.md)を追加。機能要件に変更はない |
 | 3.2 | 2026-10-05 | フロントエンドを React 18 → React 19、言語を TypeScript 7 に更新(最新版を採用)。機能要件に変更はない |
+| 3.3 | 2026-10-05 | 6.5 技術スタックに、確定した各バージョンを追加。機能要件に変更はない |
 
 ---
 
@@ -91,7 +92,7 @@ TaskManagment/
 │     ├─ pages/            … ログイン画面・メイン画面
 │     └─ components/       … 列・カード・ダイアログ等の部品
 ├─ SETUP.md                … セットアップ手順(初回のみ)
-├─ README.md                … 概要・起動方法
+├─ README.md                … 概要・技術スタック・起動方法
 └─ docs/
    ├─ requirements.md      … 本要件定義書
    ├─ screen-design.html   … 画面イメージ
@@ -246,16 +247,23 @@ TaskManagment/
 
 ### 6.5 技術スタック・実装方針
 
-| 区分 | 採用技術 | 補足 |
-|---|---|---|
-| バックエンド | Java 25(LTS)+ Spring Boot 4.x | ビルドツールは Maven |
-| データベースアクセス | Spring Data JPA(Hibernate) | PostgreSQL用のJDBCドライバを使用 |
-| データベース | PostgreSQL | テーブル定義は Flyway で管理 |
-| 認証 | Spring Security(セッション方式)+ BCryptによるパスワードハッシュ化 | L-5の要件に対応 |
-| フロントエンド | React 19(Vite でビルド。言語は TypeScript 7) | Next.js は使用しない |
-| 画面遷移 | React Router | ログイン画面・メイン画面の切り替え |
-| API通信 | REST API(JSON)。ブラウザ側は標準の fetch を使用 | 追加の通信ライブラリは使用しない |
+| 区分 | 採用技術 | バージョン | 補足 |
+|---|---|---|---|
+| バックエンド(言語) | Java(JDK) | 25(LTS) | `backend/pom.xml` の `java.version` |
+| バックエンド(FW) | Spring Boot | 4.1.1 | ビルドツールは Maven(Maven Wrapper で 3.9.16 を使用) |
+| データベースアクセス | Spring Data JPA(Hibernate) | Spring Boot 4.1.1 の管理バージョン | PostgreSQL用のJDBCドライバを使用 |
+| データベース | PostgreSQL | 開発: 17(Docker `postgres:17-alpine`)/ 利用者向け推奨: 15 以降 | テーブル定義は Flyway(Spring Boot 管理バージョン)で管理 |
+| 認証 | Spring Security(セッション方式)+ BCrypt | Spring Boot 4.1.1 の管理バージョン | L-5の要件に対応 |
+| フロントエンド(言語) | TypeScript | 7.0.2 | |
+| フロントエンド(UI) | React / React DOM | 19.3.0 | Next.js は使用しない |
+| フロントエンド(ビルド) | Vite(+ `@vitejs/plugin-react`) | 8.3.2(+ 6.1.1) | 開発サーバーは 5173 番ポート固定 |
+| 画面遷移 | React Router(`react-router-dom`) | 7.18.4 | ログイン画面・メイン画面の切り替え |
+| 静的解析(Lint) | Oxlint | 1.86.0 | `npm run lint` |
+| フロントエンドの実行基盤 | Node.js / npm | v24.21.0 / 11.19.0 | jar 同梱ビルド(`-Pbundle-frontend`)では `frontend-maven-plugin` 2.0.2 が自動取得 |
+| API通信 | REST API(JSON)。ブラウザ側は標準の fetch を使用 | - | 追加の通信ライブラリは使用しない |
+| ソース管理 | Git / GitHub | Git 2.55.0(開発環境) | Issue → 専用ブランチ → PR の流れで管理(CLAUDE.md 参照) |
 
+- バージョンは `backend/pom.xml`、`frontend/package.json` および `package-lock.json` の確定値です。依存ライブラリを更新した場合は、この表も更新してください。
 - 大掛かりなクラウド基盤や有償ミドルウェアは使用しません(無償提供のため)。
 - フロントエンド(React)のビルド成果物は、バックエンド(Spring Boot)の静的リソースに同梱し、利用者が起動するプロセスを1つにまとめます(3.2参照)。
 
