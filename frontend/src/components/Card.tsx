@@ -13,15 +13,18 @@ function todayString(): string {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
-export function Card({ card }: { card: CardData }) {
-  const overdue = card.dueDate !== null && card.dueDate < todayString()
+// 「完了」列のカードは期限を過ぎていても強調しない (要件 D-3)
+export function Card({ card, done }: { card: CardData; done: boolean }) {
+  const overdue = !done && card.dueDate !== null && card.dueDate < todayString()
   return (
     <div className={overdue ? 'card overdue' : 'card'}>
       <div className="card-title">{card.title}</div>
       <div className="meta">
-        <span className={`badge badge-${card.priority.toLowerCase()}`}>
-          {PRIORITY_LABEL[card.priority]}
-        </span>
+        {card.priority && (
+          <span className={`badge badge-${card.priority.toLowerCase()}`}>
+            {PRIORITY_LABEL[card.priority]}
+          </span>
+        )}
         {card.dueDate && (
           <span>
             期限: {card.dueDate}

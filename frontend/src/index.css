@@ -130,7 +130,8 @@ h1 {
 }
 
 .badge-low {
-  background: #1f845a;
+  background: #f5cd47;
+  color: #172b4d;
 }
 
 .status {
