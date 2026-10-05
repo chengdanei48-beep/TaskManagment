@@ -1,5 +1,6 @@
 package com.taskmanagement.backend.controller;
 
+import com.taskmanagement.backend.dto.CardMoveRequest;
 import com.taskmanagement.backend.dto.CardRequest;
 import com.taskmanagement.backend.dto.CardResponse;
 import com.taskmanagement.backend.entity.Priority;
@@ -58,6 +59,16 @@ public class CardController {
         return cardService.update(user.getId(), id, request)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/api/cards/{id}/move")
+    public ResponseEntity<Void> move(
+            @AuthenticationPrincipal AppUserDetails user,
+            @PathVariable Long id,
+            @RequestBody CardMoveRequest request) {
+        return cardService.move(user.getId(), id, request)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/api/cards/{id}")

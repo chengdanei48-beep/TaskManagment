@@ -1,5 +1,6 @@
 package com.taskmanagement.backend.service;
 
+import com.taskmanagement.backend.dto.CardMoveRequest;
 import com.taskmanagement.backend.dto.CardRequest;
 import com.taskmanagement.backend.dto.CardResponse;
 import com.taskmanagement.backend.entity.BoardColumn;
@@ -7,6 +8,7 @@ import com.taskmanagement.backend.entity.Card;
 import com.taskmanagement.backend.entity.Priority;
 import com.taskmanagement.backend.repository.BoardColumnRepository;
 import com.taskmanagement.backend.repository.CardRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -75,6 +77,62 @@ public class CardService {
                     return true;
                 })
                 .orElse(false);
+    }
+
+    /**
+     * カードを移動先の列の指定位置へ移し、影響する列の position を 0 からの連番に振り直す。
+     * カードが存在しない・他人のものなら false。
+     */
+    @Transactional
+    public boolean move(Long userId, Long id, CardMoveRequest request) {
+        if (request.columnId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "移動先のカラムを指定してください");
+        }
+        Optional<Card> found = cardRepository.findByIdAndColumnUserId(id, userId);
+        if (found.isEmpty()) {
+            return false;
+        }
+        BoardColumn target = boardColumnRepository
+                .findByIdAndUserId(request.columnId(), userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "カラムが見つかりません"));
+
+        Card card = found.get();
+        Long sourceColumnId = card.getColumn().getId();
+
+        List<Card> ordered = new ArrayList<>(cardRepository.findByColumnIdOrderByPosition(target.getId()));
+        ordered.removeIf(c -> c.getId().equals(id));
+        int index = ordered.size();
+        if (request.beforeCardId() != null) {
+            index = indexOfCard(ordered, request.beforeCardId());
+            if (index < 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "挿入位置のカードが移動先のカラムにありません");
+            }
+        }
+        card.setColumn(target);
+        ordered.add(index, card);
+        renumber(ordered);
+
+        if (!sourceColumnId.equals(target.getId())) {
+            // 検索前に変更がフラッシュされ、移動したカードは移動元の結果から外れる
+            renumber(cardRepository.findByColumnIdOrderByPosition(sourceColumnId));
+        }
+        return true;
+    }
+
+    private static int indexOfCard(List<Card> cards, Long cardId) {
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getId().equals(cardId)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static void renumber(List<Card> cards) {
+        for (int i = 0; i < cards.size(); i++) {
+            cards.get(i).setPosition(i);
+        }
     }
 
     private static void apply(Card card, CardRequest request) {
