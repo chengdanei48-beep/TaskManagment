@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createCard,
   createColumn,
@@ -16,6 +16,7 @@ import { createLabel, deleteLabel, fetchLabels } from '../api/labels'
 import { useAuth } from '../auth/AuthContext'
 import { CardDialog, type DialogTarget } from '../components/CardDialog'
 import { AddColumn } from '../components/AddColumn'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Column } from '../components/Column'
 import { SearchBar, type SearchState } from '../components/SearchBar'
 import { COLUMN_LIMIT, type BoardColumn, type Card, type Label, type LabelInput } from '../types'
@@ -52,7 +53,10 @@ export function BoardPage() {
   const [search, setSearch] = useState<SearchState>({ keyword: '', priority: '', columnId: '' })
   const [columns, setColumns] = useState<BoardColumn[]>([])
   const [columnsError, setColumnsError] = useState<string | null>(null)
+  const [labelsError, setLabelsError] = useState<string | null>(null)
   const [labels, setLabels] = useState<Label[]>([])
+  // 削除の確認待ちの列(カードがある列のみ)
+  const [deletingColumn, setDeletingColumn] = useState<BoardColumn | null>(null)
   const [result, setResult] = useState<CardsResult | null>(null)
   const [dialog, setDialog] = useState<DialogTarget | null>(null)
   // カードの追加・編集・削除のたびに増やし、現在の検索条件のまま一覧を取り直す
@@ -66,25 +70,40 @@ export function BoardPage() {
   // 取得結果がどの検索条件のものかを保持し、現在の条件と違えば「読み込み中」とみなす
   const key = JSON.stringify([debouncedKeyword, priority, columnId, reload])
 
+  // セッション切れ(401)ならログイン画面へ戻す。401 だったときだけ true を返す
+  const handleUnauthorized = useCallback(
+    (e: unknown): boolean => {
+      if (e instanceof ApiError && e.status === 401) {
+        expire()
+        return true
+      }
+      return false
+    },
+    [expire],
+  )
+
   useEffect(() => {
     const controller = new AbortController()
     fetchColumns(controller.signal)
-      .then(setColumns)
+      .then((data) => {
+        setColumns(data)
+        setColumnsError(null)
+      })
       .catch((e: unknown) => {
-        if (controller.signal.aborted) return
-        // セッション切れならログイン画面へ戻す
-        if (e instanceof ApiError && e.status === 401) expire()
-        else setColumnsError(errorMessage(e))
+        if (controller.signal.aborted || handleUnauthorized(e)) return
+        setColumnsError(errorMessage(e))
       })
     fetchLabels(controller.signal)
-      .then(setLabels)
+      .then((data) => {
+        setLabels(data)
+        setLabelsError(null)
+      })
       .catch((e: unknown) => {
-        if (controller.signal.aborted) return
-        if (e instanceof ApiError && e.status === 401) expire()
-        else setColumnsError(errorMessage(e))
+        if (controller.signal.aborted || handleUnauthorized(e)) return
+        setLabelsError(errorMessage(e))
       })
     return () => controller.abort()
-  }, [expire, reload])
+  }, [handleUnauthorized, reload])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -98,19 +117,19 @@ export function BoardPage() {
     )
       .then((cards) => setResult({ key, cards, error: null }))
       .catch((e: unknown) => {
-        if (controller.signal.aborted) return
-        if (e instanceof ApiError && e.status === 401) expire()
-        else setResult({ key, cards: [], error: errorMessage(e) })
+        if (controller.signal.aborted || handleUnauthorized(e)) return
+        setResult({ key, cards: [], error: errorMessage(e) })
       })
     return () => controller.abort()
-  }, [key, debouncedKeyword, priority, columnId, expire])
+    // key は検索条件と reload を畳み込んだ値で、取得結果との対応づけにも使う
+  }, [key, debouncedKeyword, priority, columnId, handleUnauthorized])
 
   // 更新系の操作。セッション切れ(401)ならログイン画面へ戻し、エラーはダイアログ側で表示する
   async function mutate(action: () => Promise<unknown>) {
     try {
       await action()
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) expire()
+      handleUnauthorized(e)
       throw e
     }
     setDialog(null)
@@ -124,7 +143,7 @@ export function BoardPage() {
       setLabels((prev) => [...prev, created])
       return created
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) expire()
+      handleUnauthorized(e)
       throw e
     }
   }
@@ -133,7 +152,7 @@ export function BoardPage() {
     try {
       await deleteLabel(id)
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) expire()
+      handleUnauthorized(e)
       throw e
     }
     setLabels((prev) => prev.filter((l) => l.id !== id))
@@ -141,7 +160,7 @@ export function BoardPage() {
   }
 
   const loading = result?.key !== key
-  const error = columnsError ?? result?.error ?? null
+  const error = columnsError ?? labelsError ?? result?.error ?? null
 
   const cardsByColumn = useMemo(() => {
     const map = new Map<number, Card[]>()
@@ -176,16 +195,14 @@ export function BoardPage() {
     setDropTarget(null)
   }
 
+  // カードがある列だけ確認する(要件 C-3)。件数は絞り込みに関係なく全件
+  function requestDeleteColumn(column: BoardColumn) {
+    if (column.cardCount > 0) setDeletingColumn(column)
+    else void handleDeleteColumn(column)
+  }
+
   async function handleDeleteColumn(column: BoardColumn) {
-    // カードがある列だけ確認する(要件 C-3)。件数は絞り込みに関係なく全件
-    if (
-      column.cardCount > 0 &&
-      !window.confirm(
-        `「${column.name}」には ${column.cardCount} 件のカードがあります。カードも一緒に削除されます。よろしいですか?`,
-      )
-    ) {
-      return
-    }
+    setDeletingColumn(null)
     setActionError(null)
     try {
       await mutate(() => deleteColumn(column.id))
@@ -227,7 +244,7 @@ export function BoardPage() {
   return (
     <main className="page">
       <header className="page-head">
-        <h1>ボード</h1>
+        <h1>タスク管理アプリ</h1>
         <div className="user-menu">
           <span>{user?.username}</span>
           <button type="button" onClick={() => void logout()}>
@@ -253,7 +270,7 @@ export function BoardPage() {
             key={column.id}
             column={column}
             cards={cardsByColumn.get(column.id) ?? []}
-            onAdd={(c) => setDialog({ mode: 'create', columnId: c.id, columnName: c.name })}
+            onAdd={(c) => setDialog({ mode: 'create', columnId: c.id })}
             onEdit={(card) => setDialog({ mode: 'edit', card })}
             draggingCardId={draggingCardId}
             dropBefore={effectiveDrop?.columnId === column.id ? effectiveDrop.beforeCardId : undefined}
@@ -266,13 +283,22 @@ export function BoardPage() {
             onDragLeaveColumn={() => setDropTarget(null)}
             onDrop={() => void handleDrop()}
             onSort={(by) => void handleSort(column.id, by)}
-            onDelete={() => void handleDeleteColumn(column)}
+            onDelete={() => requestDeleteColumn(column)}
           />
         ))}
-        {columns.length < COLUMN_LIMIT && (
-          <AddColumn onAdd={(name) => mutate(() => createColumn(name))} />
-        )}
+        <AddColumn
+          onAdd={(name) => mutate(() => createColumn(name))}
+          limitReached={columns.length >= COLUMN_LIMIT}
+        />
       </div>
+      {deletingColumn && (
+        <ConfirmDialog
+          title="列を削除しますか?"
+          message={`「${deletingColumn.name}」を削除します。列の中の${deletingColumn.cardCount}件のカードも一緒に削除されます。`}
+          onConfirm={() => void handleDeleteColumn(deletingColumn)}
+          onCancel={() => setDeletingColumn(null)}
+        />
+      )}
       {dialog && (
         <CardDialog
           // 対象が変わったら入力欄を初期化する

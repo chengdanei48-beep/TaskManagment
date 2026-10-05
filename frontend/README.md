@@ -1,32 +1,19 @@
-# React + TypeScript + Vite
+# フロントエンド
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite のSPA。画面仕様・要件は `../docs/` を参照してください。
 
-Currently, two official plugins are available:
+## コマンド
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+npm ci              # 依存関係のインストール
+npm run dev         # 開発サーバー(5173番ポート固定。/api は 8080 へプロキシ)
+npm run lint        # 静的解析(Oxlint)
+npm run lint:fix    # 自動修正できる指摘を修正
+npm run typecheck   # 型チェック(tsc -b)
+npm run build       # 型チェック + 本番ビルド
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Lint の設定
+
+`.oxlintrc.json` で設定しています(`correctness` カテゴリを error、React Hooks の依存配列などを有効化)。
+CI(`.github/workflows/ci.yml`)でも lint・型チェック・ビルドを実行します。

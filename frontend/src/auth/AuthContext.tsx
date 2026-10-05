@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .fetchMe(controller.signal)
       .then(setUser)
       .catch(() => {
+        // 401 以外(通信エラーなど)でも確認できなかったものとして、ログイン画面へ進める
         if (!controller.signal.aborted) setUser(null)
       })
     return () => controller.abort()
@@ -40,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
+    } catch {
+      // サーバーに届かなくても、画面側はログアウト済みにする(セッションは期限切れで失効する)
     } finally {
       setUser(null)
     }
@@ -54,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth は AuthProvider の内側で使ってください')

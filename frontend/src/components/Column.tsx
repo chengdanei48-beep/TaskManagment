@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type { DragEvent } from 'react'
 import type { SortKey } from '../api/cards'
 import type { BoardColumn, Card as CardData } from '../types'
@@ -80,7 +81,7 @@ export function Column({
           {column.name} <span className="count">{cards.length}</span>
         </h2>
         <details className="col-menu">
-          <summary aria-label={`${column.name}のメニュー`}>⋯</summary>
+          <summary aria-label={`${column.name}のメニュー`}>︙</summary>
           <button
             type="button"
             className="danger"
@@ -89,7 +90,7 @@ export function Column({
               onDelete()
             }}
           >
-            列を削除
+            削除
           </button>
         </details>
       </div>
@@ -103,7 +104,7 @@ export function Column({
       </div>
       {cards.length === 0 && dropBefore === undefined && <p className="empty">カードなし</p>}
       {cards.map((card) => (
-        <div key={card.id}>
+        <Fragment key={card.id}>
           {dropBefore === card.id && placeholder}
           <Card
             card={card}
@@ -113,7 +114,7 @@ export function Column({
             onDragStart={() => onDragStart(card.id)}
             onDragEnd={onDragEnd}
           />
-        </div>
+        </Fragment>
       ))}
       {dropBefore === null && placeholder}
       <button type="button" className="btn-add" onClick={() => onAdd(column)}>

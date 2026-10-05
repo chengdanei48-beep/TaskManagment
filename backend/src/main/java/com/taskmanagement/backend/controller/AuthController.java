@@ -8,6 +8,7 @@ import com.taskmanagement.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -42,7 +43,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(
-            @RequestBody AuthRequest body, HttpServletRequest request, HttpServletResponse response) {
+            @Valid @RequestBody AuthRequest body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         User user = authService.register(body.username(), body.password());
         // 登録後はそのままログイン状態にする
         signIn(body.username(), body.password(), request, response);
@@ -52,7 +55,9 @@ public class AuthController {
 
     @PostMapping("/login")
     public UserResponse login(
-            @RequestBody AuthRequest body, HttpServletRequest request, HttpServletResponse response) {
+            @RequestBody AuthRequest body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         AppUserDetails user = signIn(body.username(), body.password(), request, response);
         return new UserResponse(user.getId(), user.getUsername());
     }
@@ -73,14 +78,18 @@ public class AuthController {
     }
 
     private AppUserDetails signIn(
-            String username, String password, HttpServletRequest request, HttpServletResponse response) {
+            String username,
+            String password,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         Authentication authentication;
         try {
-            authentication = authenticationManager.authenticate(
-                    UsernamePasswordAuthenticationToken.unauthenticated(username, password));
+            authentication =
+                    authenticationManager.authenticate(
+                            UsernamePasswordAuthenticationToken.unauthenticated(
+                                    username, password));
         } catch (BadCredentialsException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "ユーザー名またはパスワードが正しくありません");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "ユーザー名またはパスワードが正しくありません");
         } catch (AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "ログインできませんでした");
         }

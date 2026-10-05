@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  コーディング規約。整形(インデント・折り返し・import順)は Spotless に任せ、
+  ここでは構造・命名・バグになりやすい書き方を検査する。
+-->
+<module name="Checker">
+  <property name="severity" value="warning"/>
+  <property name="charset" value="UTF-8"/>
+
+  <module name="FileTabCharacter"/>
+  <module name="NewlineAtEndOfFile"/>
+
+  <module name="TreeWalker">
+    <!-- 命名 -->
+    <module name="PackageName"/>
+    <module name="TypeName"/>
+    <module name="MethodName">
+      <!-- テストメソッド名は日本語を許可する -->
+      <property name="format" value="^[a-z\p{L}][\p{L}\p{N}_]*$"/>
+    </module>
+    <module name="MemberName"/>
+    <module name="ParameterName"/>
+    <module name="LocalVariableName"/>
+    <module name="ConstantName"/>
+
+    <!-- import -->
+    <module name="AvoidStarImport"/>
+    <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
+
+    <!-- 構造 -->
+    <module name="NeedBraces"/>
+    <module name="OneStatementPerLine"/>
+    <module name="ModifierOrder"/>
+    <module name="RedundantModifier"/>
+    <module name="UpperEll"/>
+    <module name="ArrayTypeStyle"/>
+
+    <!-- バグになりやすい書き方 -->
+    <module name="EmptyStatement"/>
+    <module name="EqualsHashCode"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="StringLiteralEquality"/>
+    <module name="IllegalCatch">
+      <property name="illegalClassNames" value="Throwable,Error"/>
+    </module>
+    <module name="FallThrough"/>
+    <module name="InnerAssignment"/>
+    <module name="MultipleVariableDeclarations"/>
+  </module>
+</module>

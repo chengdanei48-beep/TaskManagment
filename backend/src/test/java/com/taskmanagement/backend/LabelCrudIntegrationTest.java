@@ -43,21 +43,27 @@ class LabelCrudIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         String name = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(name);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(name)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(name)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
-    private ResultActions createLabel(MockHttpSession session, String name, String color) throws Exception {
-        return mockMvc.perform(post("/api/labels")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"%s\",\"color\":\"%s\"}".formatted(name, color)));
+    private ResultActions createLabel(MockHttpSession session, String name, String color)
+            throws Exception {
+        return mockMvc.perform(
+                post("/api/labels")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"%s\",\"color\":\"%s\"}".formatted(name, color)));
     }
 
     private long createdId(ResultActions actions) throws Exception {
@@ -111,10 +117,11 @@ class LabelCrudIntegrationTest {
     @Test
     void 未ログインなら401() throws Exception {
         mockMvc.perform(get("/api/labels")).andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/labels")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"x\",\"color\":\"#000000\"}"))
+        mockMvc.perform(
+                        post("/api/labels")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"x\",\"color\":\"#000000\"}"))
                 .andExpect(status().isUnauthorized());
     }
 

@@ -7,13 +7,13 @@ import com.taskmanagement.backend.entity.BoardColumn;
 import com.taskmanagement.backend.entity.Card;
 import com.taskmanagement.backend.entity.Label;
 import com.taskmanagement.backend.entity.Priority;
+import com.taskmanagement.backend.exception.ResourceNotFoundException;
 import com.taskmanagement.backend.repository.BoardColumnRepository;
 import com.taskmanagement.backend.repository.CardRepository;
 import com.taskmanagement.backend.repository.LabelRepository;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,10 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@Transactional(readOnly = true)
 public class CardService {
-
-    static final int TITLE_MAX = 50;
-    static final int DESCRIPTION_MAX = 500;
 
     private final CardRepository cardRepository;
     private final BoardColumnRepository boardColumnRepository;
@@ -39,27 +37,25 @@ public class CardService {
         this.labelRepository = labelRepository;
     }
 
-    public List<CardResponse> search(Long userId, Long columnId, Priority priority, String keyword) {
-        return cardRepository.search(userId, columnId, priority, keyword).stream()
+    public List<CardResponse> search(
+            Long userId, Long columnId, Priority priority, String keyword) {
+        return cardRepository.search(userId, columnId, priority, escapeLike(keyword)).stream()
                 .map(CardResponse::from)
                 .toList();
     }
 
-    /** 他の利用者のカードは存在しないものとして扱う。 */
-    public Optional<CardResponse> findById(Long userId, Long id) {
-        return cardRepository.findByIdAndColumnUserId(id, userId).map(CardResponse::from);
+    /** 他の利用者のカードは存在しないものとして扱う(404)。 */
+    public CardResponse findById(Long userId, Long id) {
+        return CardResponse.from(findOwned(userId, id));
     }
 
     /** 指定カラムの末尾にカードを追加する。カラムが自分のものでなければ404。 */
     @Transactional
     public CardResponse create(Long userId, CardRequest request) {
-        validate(request);
         if (request.columnId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "カラムを指定してください");
         }
-        BoardColumn column = boardColumnRepository
-                .findByIdAndUserId(request.columnId(), userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "カラムが見つかりません"));
+        BoardColumn column = findOwnedColumn(userId, request.columnId());
 
         Card card = new Card();
         card.setColumn(column);
@@ -70,54 +66,35 @@ public class CardService {
     }
 
     @Transactional
-    public Optional<CardResponse> update(Long userId, Long id, CardRequest request) {
-        validate(request);
-        return cardRepository.findByIdAndColumnUserId(id, userId).map(card -> {
-            apply(card, request);
-            applyLabels(userId, card, request);
-            return CardResponse.from(card);
-        });
+    public CardResponse update(Long userId, Long id, CardRequest request) {
+        Card card = findOwned(userId, id);
+        apply(card, request);
+        applyLabels(userId, card, request);
+        return CardResponse.from(card);
     }
 
-    /** 削除できたら true。存在しない・他人のカードなら false。 */
+    /** 存在しない・他人のカードなら404。 */
     @Transactional
-    public boolean delete(Long userId, Long id) {
-        return cardRepository.findByIdAndColumnUserId(id, userId)
-                .map(card -> {
-                    cardRepository.delete(card);
-                    return true;
-                })
-                .orElse(false);
+    public void delete(Long userId, Long id) {
+        cardRepository.delete(findOwned(userId, id));
     }
 
-    /**
-     * カードを移動先の列の指定位置へ移し、影響する列の position を 0 からの連番に振り直す。
-     * カードが存在しない・他人のものなら false。
-     */
+    /** カードを移動先の列の指定位置へ移し、影響する列の position を 0 からの連番に振り直す。 カードが存在しない・他人のものなら404。 */
     @Transactional
-    public boolean move(Long userId, Long id, CardMoveRequest request) {
-        if (request.columnId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "移動先のカラムを指定してください");
-        }
-        Optional<Card> found = cardRepository.findByIdAndColumnUserId(id, userId);
-        if (found.isEmpty()) {
-            return false;
-        }
-        BoardColumn target = boardColumnRepository
-                .findByIdAndUserId(request.columnId(), userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "カラムが見つかりません"));
+    public void move(Long userId, Long id, CardMoveRequest request) {
+        Card card = findOwned(userId, id);
+        BoardColumn target = findOwnedColumn(userId, request.columnId());
 
-        Card card = found.get();
         Long sourceColumnId = card.getColumn().getId();
 
-        List<Card> ordered = new ArrayList<>(cardRepository.findByColumnIdOrderByPosition(target.getId()));
+        List<Card> ordered =
+                new ArrayList<>(cardRepository.findByColumnIdOrderByPosition(target.getId()));
         ordered.removeIf(c -> c.getId().equals(id));
         int index = ordered.size();
         if (request.beforeCardId() != null) {
             index = indexOfCard(ordered, request.beforeCardId());
             if (index < 0) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "挿入位置のカードが移動先のカラムにありません");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "挿入位置のカードが移動先のカラムにありません");
             }
         }
         card.setColumn(target);
@@ -128,7 +105,26 @@ public class CardService {
             // 検索前に変更がフラッシュされ、移動したカードは移動元の結果から外れる
             renumber(cardRepository.findByColumnIdOrderByPosition(sourceColumnId));
         }
-        return true;
+    }
+
+    private Card findOwned(Long userId, Long id) {
+        return cardRepository
+                .findByIdAndColumnUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("カードが見つかりません"));
+    }
+
+    private BoardColumn findOwnedColumn(Long userId, Long columnId) {
+        return boardColumnRepository
+                .findByIdAndUserId(columnId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("カラムが見つかりません"));
+    }
+
+    /** LIKE のワイルドカード(% _)と区切り文字(\)を、文字そのものとして検索するためにエスケープする。 */
+    private static String escapeLike(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        return keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private static int indexOfCard(List<Card> cards, Long cardId) {
@@ -147,7 +143,7 @@ public class CardService {
     }
 
     private static void apply(Card card, CardRequest request) {
-        card.setTitle(request.title().trim());
+        card.setTitle(request.title());
         String description = request.description();
         card.setDescription(description == null || description.isBlank() ? null : description);
         card.setDueDate(request.dueDate());
@@ -160,22 +156,11 @@ public class CardService {
             return;
         }
         Set<Long> ids = new LinkedHashSet<>(request.labelIds());
-        List<Label> labels = ids.isEmpty() ? List.of() : labelRepository.findByIdInAndUserId(ids, userId);
+        List<Label> labels =
+                ids.isEmpty() ? List.of() : labelRepository.findByIdInAndUserId(ids, userId);
         if (labels.size() != ids.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "ラベルが見つかりません");
+            throw new ResourceNotFoundException("ラベルが見つかりません");
         }
         card.setLabels(new LinkedHashSet<>(labels));
-    }
-
-    private static void validate(CardRequest request) {
-        String title = request.title();
-        if (title == null || title.isBlank() || title.trim().length() > TITLE_MAX) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "タイトルは1〜" + TITLE_MAX + "文字で入力してください");
-        }
-        if (request.description() != null && request.description().length() > DESCRIPTION_MAX) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "詳細説明は" + DESCRIPTION_MAX + "文字までで入力してください");
-        }
     }
 }

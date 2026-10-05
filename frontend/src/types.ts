@@ -62,3 +62,10 @@ export interface CardInput {
   /** 付けるラベルのID。空配列で全て外す */
   labelIds: number[]
 }
+
+/** 優先度の表示名(要件 4章: 重・中・低) */
+export const PRIORITY_LABEL: Record<Priority, string> = {
+  HIGH: '重',
+  MEDIUM: '中',
+  LOW: '低',
+}

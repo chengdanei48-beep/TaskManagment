@@ -10,12 +10,15 @@ const PASSWORD_MAX = 72
 
 type Mode = 'login' | 'register'
 
-function validate(username: string, password: string): string | null {
-  if (username.trim() === '' || username.length > USERNAME_MAX) {
+function validate(username: string, password: string, confirm: string): string | null {
+  if (username === '' || username.length > USERNAME_MAX) {
     return `ユーザー名は1〜${USERNAME_MAX}文字で入力してください`
   }
   if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
     return `パスワードは${PASSWORD_MIN}〜${PASSWORD_MAX}文字で入力してください`
+  }
+  if (password !== confirm) {
+    return 'パスワードが一致しません'
   }
   return null
 }
@@ -34,6 +37,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -41,8 +45,9 @@ export function LoginPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
+    const name = username.trim()
     // 新規登録時のみ入力形式を事前に確認する(ログインは既存アカウントなのでサーバー判定に任せる)
-    const invalid = mode === 'register' ? validate(username, password) : null
+    const invalid = mode === 'register' ? validate(name, password, confirm) : null
     if (invalid) {
       setError(invalid)
       return
@@ -50,7 +55,7 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await (mode === 'login' ? login : register)(username, password)
+      await (mode === 'login' ? login : register)(name, password)
     } catch (err) {
       setError(errorText(mode, err))
       setSubmitting(false)
@@ -63,7 +68,9 @@ export function LoginPage() {
       <form className="auth-form" onSubmit={onSubmit}>
         <h1>{isLogin ? 'ログイン' : 'アカウント登録'}</h1>
         <label>
-          ユーザー名
+          <span>
+            ユーザー名<span className="req">必須</span>
+          </span>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -71,9 +78,12 @@ export function LoginPage() {
             autoFocus
             required
           />
+          {!isLogin && <span className="hint">他の人と重複しない名前</span>}
         </label>
         <label>
-          パスワード
+          <span>
+            パスワード<span className="req">必須</span>
+          </span>
           <input
             type="password"
             value={password}
@@ -87,13 +97,27 @@ export function LoginPage() {
             </span>
           )}
         </label>
+        {!isLogin && (
+          <label>
+            <span>
+              パスワード(確認)<span className="req">必須</span>
+            </span>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+          </label>
+        )}
         {error && (
           <p className="error" role="alert">
             {error}
           </p>
         )}
         <button type="submit" className="primary" disabled={submitting}>
-          {isLogin ? 'ログイン' : '登録してはじめる'}
+          {isLogin ? 'ログイン' : '登録する'}
         </button>
         <button
           type="button"
@@ -101,9 +125,10 @@ export function LoginPage() {
           onClick={() => {
             setMode(isLogin ? 'register' : 'login')
             setError(null)
+            setConfirm('')
           }}
         >
-          {isLogin ? 'アカウント登録はこちら' : 'ログインはこちら'}
+          {isLogin ? 'アカウント登録はこちら' : 'ログインに戻る'}
         </button>
       </form>
     </main>

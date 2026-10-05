@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record LabelResponse(Long id, String name, String color, LocalDateTime createdAt) {
 
     public static LabelResponse from(Label label) {
-        return new LabelResponse(label.getId(), label.getName(), label.getColor(), label.getCreatedAt());
+        return new LabelResponse(
+                label.getId(), label.getName(), label.getColor(), label.getCreatedAt());
     }
 }

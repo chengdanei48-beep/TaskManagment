@@ -1,4 +1,4 @@
-import type { BoardColumn, Priority } from '../types'
+import { PRIORITY_LABEL, type BoardColumn, type Priority } from '../types'
 
 export interface SearchState {
   keyword: string
@@ -27,9 +27,9 @@ export function SearchBar({ value, columns, onChange }: Props) {
         onChange={(e) => onChange({ ...value, priority: e.target.value as Priority | '' })}
       >
         <option value="">優先度: すべて</option>
-        <option value="HIGH">高</option>
-        <option value="MEDIUM">中</option>
-        <option value="LOW">低</option>
+        <option value="HIGH">{PRIORITY_LABEL.HIGH}</option>
+        <option value="MEDIUM">{PRIORITY_LABEL.MEDIUM}</option>
+        <option value="LOW">{PRIORITY_LABEL.LOW}</option>
       </select>
       <select
         aria-label="カラム"

@@ -4,8 +4,9 @@ import com.taskmanagement.backend.dto.LabelRequest;
 import com.taskmanagement.backend.dto.LabelResponse;
 import com.taskmanagement.backend.security.AppUserDetails;
 import com.taskmanagement.backend.service.LabelService;
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,9 +14,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/labels")
 public class LabelController {
 
     private final LabelService labelService;
@@ -24,22 +27,23 @@ public class LabelController {
         this.labelService = labelService;
     }
 
-    @GetMapping("/api/labels")
+    @GetMapping
     public List<LabelResponse> findAll(@AuthenticationPrincipal AppUserDetails user) {
         return labelService.findAll(user.getId());
     }
 
-    @PostMapping("/api/labels")
+    @PostMapping
     public ResponseEntity<LabelResponse> create(
-            @AuthenticationPrincipal AppUserDetails user, @RequestBody LabelRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(labelService.create(user.getId(), request));
+            @AuthenticationPrincipal AppUserDetails user,
+            @Valid @RequestBody LabelRequest request) {
+        LabelResponse created = labelService.create(user.getId(), request);
+        return ResponseEntity.created(URI.create("/api/labels/" + created.id())).body(created);
     }
 
-    @DeleteMapping("/api/labels/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal AppUserDetails user, @PathVariable Long id) {
-        return labelService.delete(user.getId(), id)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
+        labelService.delete(user.getId(), id);
+        return ResponseEntity.noContent().build();
     }
 }

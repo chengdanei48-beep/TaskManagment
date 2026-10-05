@@ -312,7 +312,8 @@ button.link {
   color: inherit;
 }
 
-.dialog .req {
+.dialog .req,
+.auth-form .req {
   color: var(--danger-line);
   font-size: 11px;
   margin-left: 4px;
@@ -482,4 +483,41 @@ button.danger {
   width: 36px;
   height: 32px;
   padding: 2px;
+}
+
+/* ネイティブ <dialog>(showModal)。フォーカストラップ・Esc・背景の操作無効化はブラウザが担う */
+dialog.modal {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  overflow: visible;
+}
+
+dialog.modal::backdrop {
+  background: rgba(9, 30, 66, 0.5);
+}
+
+dialog.modal .dialog {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.dialog .hint-created {
+  font-size: 12px;
+  color: #5e6c84;
+}
+
+.dialog p.message {
+  font-size: 13px;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

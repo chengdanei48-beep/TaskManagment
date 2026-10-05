@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs の除外設定。誤検知になるものだけを、理由を添えて除外する。
+-->
+<FindBugsFilter>
+  <!-- JPAエンティティとDTO(record)は、getter/setterで内部の可変オブジェクトを直接やり取りする設計 -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>
