@@ -12,12 +12,13 @@ import {
   updateCard,
 } from '../api/cards'
 import { ApiError } from '../api/http'
+import { createLabel, deleteLabel, fetchLabels } from '../api/labels'
 import { useAuth } from '../auth/AuthContext'
 import { CardDialog, type DialogTarget } from '../components/CardDialog'
 import { AddColumn } from '../components/AddColumn'
 import { Column } from '../components/Column'
 import { SearchBar, type SearchState } from '../components/SearchBar'
-import { COLUMN_LIMIT, type BoardColumn, type Card } from '../types'
+import { COLUMN_LIMIT, type BoardColumn, type Card, type Label, type LabelInput } from '../types'
 
 const DEBOUNCE_MS = 300
 
@@ -51,6 +52,7 @@ export function BoardPage() {
   const [search, setSearch] = useState<SearchState>({ keyword: '', priority: '', columnId: '' })
   const [columns, setColumns] = useState<BoardColumn[]>([])
   const [columnsError, setColumnsError] = useState<string | null>(null)
+  const [labels, setLabels] = useState<Label[]>([])
   const [result, setResult] = useState<CardsResult | null>(null)
   const [dialog, setDialog] = useState<DialogTarget | null>(null)
   // カードの追加・編集・削除のたびに増やし、現在の検索条件のまま一覧を取り直す
@@ -71,6 +73,13 @@ export function BoardPage() {
       .catch((e: unknown) => {
         if (controller.signal.aborted) return
         // セッション切れならログイン画面へ戻す
+        if (e instanceof ApiError && e.status === 401) expire()
+        else setColumnsError(errorMessage(e))
+      })
+    fetchLabels(controller.signal)
+      .then(setLabels)
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return
         if (e instanceof ApiError && e.status === 401) expire()
         else setColumnsError(errorMessage(e))
       })
@@ -105,6 +114,29 @@ export function BoardPage() {
       throw e
     }
     setDialog(null)
+    setReload((n) => n + 1)
+  }
+
+  // ラベルの作成・削除。ダイアログは開いたままにし、一覧とカード表示だけ取り直す
+  async function handleCreateLabel(input: LabelInput): Promise<Label> {
+    try {
+      const created = await createLabel(input)
+      setLabels((prev) => [...prev, created])
+      return created
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) expire()
+      throw e
+    }
+  }
+
+  async function handleDeleteLabel(id: number): Promise<void> {
+    try {
+      await deleteLabel(id)
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) expire()
+      throw e
+    }
+    setLabels((prev) => prev.filter((l) => l.id !== id))
     setReload((n) => n + 1)
   }
 
@@ -246,6 +278,9 @@ export function BoardPage() {
           // 対象が変わったら入力欄を初期化する
           key={dialog.mode === 'edit' ? `edit-${dialog.card.id}` : `create-${dialog.columnId}`}
           target={dialog}
+          labels={labels}
+          onCreateLabel={handleCreateLabel}
+          onDeleteLabel={handleDeleteLabel}
           onClose={() => setDialog(null)}
           onSave={(input) =>
             mutate(() =>

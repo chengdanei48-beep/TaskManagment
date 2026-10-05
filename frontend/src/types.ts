@@ -1,5 +1,21 @@
 export type Priority = 'HIGH' | 'MEDIUM' | 'LOW'
 
+export interface Label {
+  id: number
+  name: string
+  /** #RRGGBB 形式 */
+  color: string
+  createdAt: string
+}
+
+export interface LabelInput {
+  name: string
+  color: string
+}
+
+/** ラベル名の最大文字数 */
+export const LABEL_NAME_MAX = 20
+
 export interface Card {
   id: number
   columnId: number
@@ -9,6 +25,7 @@ export interface Card {
   priority: Priority | null
   position: number
   createdAt: string
+  labels: Label[]
 }
 
 export interface BoardColumn {
@@ -42,4 +59,6 @@ export interface CardInput {
   description: string | null
   dueDate: string | null
   priority: Priority | null
+  /** 付けるラベルのID。空配列で全て外す */
+  labelIds: number[]
 }

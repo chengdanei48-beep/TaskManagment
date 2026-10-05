@@ -421,3 +421,65 @@ button.danger {
 .add-col-form .error {
   margin: 0;
 }
+
+.label-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.label-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.label-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-option label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label-option input[type='checkbox'] {
+  padding: 0;
+  min-height: 0;
+}
+
+.label-new {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.label-new input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.label-new input[type='color'] {
+  width: 36px;
+  height: 32px;
+  padding: 2px;
+}
