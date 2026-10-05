@@ -5,6 +5,8 @@ import {
   fetchCards,
   fetchColumns,
   moveCard,
+  sortColumn,
+  type SortKey,
   updateCard,
 } from '../api/cards'
 import { ApiError } from '../api/http'
@@ -52,7 +54,7 @@ export function BoardPage() {
   const [reload, setReload] = useState(0)
   const [draggingCardId, setDraggingCardId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
-  const [moveError, setMoveError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const debouncedKeyword = useDebounced(search.keyword.trim(), DEBOUNCE_MS)
   const { priority, columnId } = search
@@ -139,17 +141,28 @@ export function BoardPage() {
     setDropTarget(null)
   }
 
+  async function handleSort(targetColumnId: number, by: SortKey) {
+    setActionError(null)
+    try {
+      await mutate(() => sortColumn(targetColumnId, by))
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) {
+        setActionError('並び替えできませんでした。画面を更新してもう一度お試しください')
+      }
+    }
+  }
+
   async function handleDrop() {
     const cardId = draggingCardId
     const target = effectiveDrop
     endDrag()
     if (cardId === null || !target) return
-    setMoveError(null)
+    setActionError(null)
     try {
       await mutate(() => moveCard(cardId, target.columnId, target.beforeCardId))
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 401)) {
-        setMoveError('カードを移動できませんでした。画面を更新してもう一度お試しください')
+        setActionError('カードを移動できませんでした。画面を更新してもう一度お試しください')
       }
     }
   }
@@ -171,9 +184,9 @@ export function BoardPage() {
           {error}
         </p>
       )}
-      {moveError && (
+      {actionError && (
         <p className="error" role="alert">
-          {moveError}
+          {actionError}
         </p>
       )}
       {loading && !error && <p className="status">読み込み中...</p>}
@@ -188,13 +201,14 @@ export function BoardPage() {
             draggingCardId={draggingCardId}
             dropBefore={effectiveDrop?.columnId === column.id ? effectiveDrop.beforeCardId : undefined}
             onDragStart={(cardId) => {
-              setMoveError(null)
+              setActionError(null)
               setDraggingCardId(cardId)
             }}
             onDragEnd={endDrag}
             onDragOverPosition={handleDragOverPosition}
             onDragLeaveColumn={() => setDropTarget(null)}
             onDrop={() => void handleDrop()}
+            onSort={(by) => void handleSort(column.id, by)}
           />
         ))}
       </div>

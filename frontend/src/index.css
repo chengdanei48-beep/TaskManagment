@@ -349,3 +349,14 @@ button.danger {
   margin-bottom: 8px;
   background: rgba(12, 102, 228, 0.08);
 }
+
+.sort-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sort-buttons button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
