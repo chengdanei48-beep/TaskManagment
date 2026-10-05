@@ -9,9 +9,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
- * 同梱したフロントエンド(static/)を配信する。
- * /login のような画面のURLを直接開いても表示できるよう、該当するファイルがなければ index.html を返す。
- * ただし /api/** と、拡張子付きの存在しないファイル(例: /assets/x.js)は index.html を返さず404にする。
+ * 同梱したフロントエンド(static/)を配信する。 /login のような画面のURLを直接開いても表示できるよう、該当するファイルがなければ index.html を返す。 ただし
+ * /api/** と、拡張子付きの存在しないファイル(例: /assets/x.js)は index.html を返さず404にする。
  */
 @Configuration
 public class SpaWebConfig implements WebMvcConfigurer {
@@ -23,19 +22,21 @@ public class SpaWebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .resourceChain(true)
-                .addResolver(new PathResourceResolver() {
-                    @Override
-                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
-                        Resource requested = location.createRelative(resourcePath);
-                        if (requested.exists() && requested.isReadable()) {
-                            return requested;
-                        }
-                        if (resourcePath.startsWith("api/") || resourcePath.contains(".")) {
-                            return null;
-                        }
-                        Resource index = new ClassPathResource(INDEX);
-                        return index.exists() ? index : null;
-                    }
-                });
+                .addResolver(
+                        new PathResourceResolver() {
+                            @Override
+                            protected Resource getResource(String resourcePath, Resource location)
+                                    throws IOException {
+                                Resource requested = location.createRelative(resourcePath);
+                                if (requested.exists() && requested.isReadable()) {
+                                    return requested;
+                                }
+                                if (resourcePath.startsWith("api/") || resourcePath.contains(".")) {
+                                    return null;
+                                }
+                                Resource index = new ClassPathResource(INDEX);
+                                return index.exists() ? index : null;
+                            }
+                        });
     }
 }

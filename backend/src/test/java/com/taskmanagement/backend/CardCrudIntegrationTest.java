@@ -49,33 +49,42 @@ class CardCrudIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         String name = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(name);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(name)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(name)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
     private Long firstColumnId(MockHttpSession session) throws Exception {
         String id = userId(session);
-        List<BoardColumn> columns = boardColumnRepository.findByUserIdOrderByPosition(Long.valueOf(id));
+        List<BoardColumn> columns =
+                boardColumnRepository.findByUserIdOrderByPosition(Long.valueOf(id));
         return columns.get(0).getId();
     }
 
     private String userId(MockHttpSession session) throws Exception {
-        String body = mockMvc.perform(get("/api/auth/me").session(session))
-                .andReturn().getResponse().getContentAsString();
+        String body =
+                mockMvc.perform(get("/api/auth/me").session(session))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         return body.replaceAll(".*\"id\":(\\d+).*", "$1");
     }
 
     private ResultActions createCard(MockHttpSession session, String json) throws Exception {
-        return mockMvc.perform(post("/api/cards")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json));
+        return mockMvc.perform(
+                post("/api/cards")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json));
     }
 
     private static String cardJson(Long columnId, String title) {
@@ -132,7 +141,8 @@ class CardCrudIntegrationTest {
         createCard(session, cardJson(columnId, "")).andExpect(status().isBadRequest());
         createCard(session, cardJson(columnId, "   ")).andExpect(status().isBadRequest());
         createCard(session, cardJson(columnId, "あ".repeat(51))).andExpect(status().isBadRequest());
-        createCard(session, "{\"columnId\":%d}".formatted(columnId)).andExpect(status().isBadRequest());
+        createCard(session, "{\"columnId\":%d}".formatted(columnId))
+                .andExpect(status().isBadRequest());
         createCard(session, "{\"title\":\"カラム無し\"}").andExpect(status().isBadRequest());
         createCard(
                         session,
@@ -141,7 +151,8 @@ class CardCrudIntegrationTest {
                 .andExpect(status().isBadRequest());
         createCard(
                         session,
-                        "{\"columnId\":%d,\"title\":\"x\",\"priority\":\"URGENT\"}".formatted(columnId))
+                        "{\"columnId\":%d,\"title\":\"x\",\"priority\":\"URGENT\"}"
+                                .formatted(columnId))
                 .andExpect(status().isBadRequest());
 
         // 境界値(50文字・500文字)は作成できる
@@ -168,12 +179,14 @@ class CardCrudIntegrationTest {
         Long columnId = firstColumnId(session);
         long id = createdId(createCard(session, cardJson(columnId, "更新前")));
 
-        mockMvc.perform(put("/api/cards/" + id)
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":999999,\"title\":\"更新後\",\"description\":\"説明\","
-                                + "\"dueDate\":\"2026-11-01\",\"priority\":\"LOW\"}"))
+        mockMvc.perform(
+                        put("/api/cards/" + id)
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"columnId\":999999,\"title\":\"更新後\",\"description\":\"説明\","
+                                                + "\"dueDate\":\"2026-11-01\",\"priority\":\"LOW\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("更新後"))
                 .andExpect(jsonPath("$.description").value("説明"))
@@ -182,11 +195,12 @@ class CardCrudIntegrationTest {
                 .andExpect(jsonPath("$.columnId").value(columnId));
 
         // 空の説明・未設定の重要度/期限に戻せる
-        mockMvc.perform(put("/api/cards/" + id)
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"更新後\",\"description\":\"\"}"))
+        mockMvc.perform(
+                        put("/api/cards/" + id)
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"更新後\",\"description\":\"\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").doesNotExist())
                 .andExpect(jsonPath("$.dueDate").doesNotExist())
@@ -198,17 +212,19 @@ class CardCrudIntegrationTest {
         MockHttpSession session = newSession();
         long id = createdId(createCard(session, cardJson(firstColumnId(session), "元")));
 
-        mockMvc.perform(put("/api/cards/" + id)
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"\"}"))
+        mockMvc.perform(
+                        put("/api/cards/" + id)
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"\"}"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(put("/api/cards/999999999")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"x\"}"))
+        mockMvc.perform(
+                        put("/api/cards/999999999")
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"x\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -218,11 +234,12 @@ class CardCrudIntegrationTest {
         MockHttpSession other = newSession();
         long id = createdId(createCard(owner, cardJson(firstColumnId(owner), "Aのカード")));
 
-        mockMvc.perform(put("/api/cards/" + id)
-                        .session(other)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"乗っ取り\"}"))
+        mockMvc.perform(
+                        put("/api/cards/" + id)
+                                .session(other)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"乗っ取り\"}"))
                 .andExpect(status().isNotFound());
         mockMvc.perform(delete("/api/cards/" + id).session(other).with(csrf()))
                 .andExpect(status().isNotFound());
@@ -246,17 +263,19 @@ class CardCrudIntegrationTest {
 
     @Test
     void 未ログインは401_CSRFトークンなしは403() throws Exception {
-        mockMvc.perform(post("/api/cards")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":1,\"title\":\"x\"}"))
+        mockMvc.perform(
+                        post("/api/cards")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"columnId\":1,\"title\":\"x\"}"))
                 .andExpect(status().isUnauthorized());
 
         MockHttpSession session = newSession();
-        mockMvc.perform(post("/api/cards")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cardJson(firstColumnId(session), "x")))
+        mockMvc.perform(
+                        post("/api/cards")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(cardJson(firstColumnId(session), "x")))
                 .andExpect(status().isForbidden());
     }
 }

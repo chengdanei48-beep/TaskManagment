@@ -4,6 +4,7 @@ import com.taskmanagement.backend.entity.BoardColumn;
 import com.taskmanagement.backend.entity.User;
 import com.taskmanagement.backend.repository.BoardColumnRepository;
 import com.taskmanagement.backend.repository.UserRepository;
+import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -16,10 +17,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AuthService {
 
-    static final int USERNAME_MAX = 50;
-    static final int PASSWORD_MIN = 8;
-    // BCryptは72バイトを超える部分を無視するため上限を設ける
-    static final int PASSWORD_MAX = 72;
     private static final String UNIQUE_VIOLATION = "23505";
     private static final List<String> DEFAULT_COLUMNS = List.of("未着手", "進行中", "完了");
 
@@ -36,10 +33,9 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /** 利用者を登録し、初期カラム(未着手・進行中・完了)を作成する。 */
+    /** 利用者を登録し、初期カラム(未着手・進行中・完了)を作成する。入力の形式は DTO の Bean Validation で検証済み。 */
     @Transactional
     public User register(String username, String password) {
-        validate(username, password);
         if (userRepository.existsByUsername(username)) {
             throw duplicated();
         }
@@ -56,26 +52,16 @@ public class AuthService {
             }
             throw e;
         }
+        List<BoardColumn> columns = new ArrayList<>();
         for (int i = 0; i < DEFAULT_COLUMNS.size(); i++) {
             BoardColumn column = new BoardColumn();
             column.setUser(user);
             column.setName(DEFAULT_COLUMNS.get(i));
             column.setPosition(i);
-            boardColumnRepository.save(column);
+            columns.add(column);
         }
+        boardColumnRepository.saveAll(columns);
         return user;
-    }
-
-    private static void validate(String username, String password) {
-        if (username == null || username.isBlank() || username.length() > USERNAME_MAX) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "ユーザー名は1〜" + USERNAME_MAX + "文字で入力してください");
-        }
-        if (password == null || password.length() < PASSWORD_MIN || password.length() > PASSWORD_MAX) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "パスワードは" + PASSWORD_MIN + "〜" + PASSWORD_MAX + "文字で入力してください");
-        }
     }
 
     private static ResponseStatusException duplicated() {

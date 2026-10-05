@@ -45,12 +45,16 @@ class CardMoveIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         String name = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(name);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(name)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(name)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
@@ -60,35 +64,51 @@ class CardMoveIntegrationTest {
     }
 
     private List<BoardColumn> columnsOf(MockHttpSession session) throws Exception {
-        String body = mockMvc.perform(get("/api/auth/me").session(session))
-                .andReturn().getResponse().getContentAsString();
+        String body =
+                mockMvc.perform(get("/api/auth/me").session(session))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         return columnsOf(body.replaceAll(".*\"username\":\"([^\"]+)\".*", "$1"));
     }
 
     private long addCard(MockHttpSession session, Long columnId, String title) throws Exception {
-        String body = mockMvc.perform(post("/api/cards")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":%d,\"title\":\"%s\"}".formatted(columnId, title)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+        String body =
+                mockMvc.perform(
+                                post("/api/cards")
+                                        .session(session)
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"columnId\":%d,\"title\":\"%s\"}"
+                                                        .formatted(columnId, title)))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         return Long.parseLong(body.replaceAll(".*\"id\":(\\d+).*", "$1"));
     }
 
-    private ResultActions move(MockHttpSession session, long cardId, Long columnId, Long beforeCardId)
+    private ResultActions move(
+            MockHttpSession session, long cardId, Long columnId, Long beforeCardId)
             throws Exception {
-        return mockMvc.perform(put("/api/cards/" + cardId + "/move")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"columnId\":%s,\"beforeCardId\":%s}".formatted(columnId, beforeCardId)));
+        return mockMvc.perform(
+                put("/api/cards/" + cardId + "/move")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"columnId\":%s,\"beforeCardId\":%s}"
+                                        .formatted(columnId, beforeCardId)));
     }
 
-    private void assertColumn(MockHttpSession session, Long columnId, String... titles) throws Exception {
+    private void assertColumn(MockHttpSession session, Long columnId, String... titles)
+            throws Exception {
         mockMvc.perform(get("/api/cards?columnId=" + columnId).session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].title").value(titles.length == 0 ? empty() : contains((Object[]) titles)))
+                .andExpect(
+                        jsonPath("$[*].title")
+                                .value(titles.length == 0 ? empty() : contains((Object[]) titles)))
                 .andExpect(jsonPath("$[*].position").value(positions(titles.length)));
     }
 
@@ -204,15 +224,17 @@ class CardMoveIntegrationTest {
 
         move(session, 999999999L, col, null).andExpect(status().isNotFound());
 
-        mockMvc.perform(put("/api/cards/" + a + "/move")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":%d}".formatted(col)))
+        mockMvc.perform(
+                        put("/api/cards/" + a + "/move")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"columnId\":%d}".formatted(col)))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(put("/api/cards/" + a + "/move")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":%d}".formatted(col)))
+        mockMvc.perform(
+                        put("/api/cards/" + a + "/move")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"columnId\":%d}".formatted(col)))
                 .andExpect(status().isForbidden());
     }
 }

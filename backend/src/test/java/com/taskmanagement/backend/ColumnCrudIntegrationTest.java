@@ -49,12 +49,16 @@ class ColumnCrudIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         username = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(username);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(username)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(username)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
@@ -64,11 +68,12 @@ class ColumnCrudIntegrationTest {
     }
 
     private ResultActions addColumn(MockHttpSession session, String name) throws Exception {
-        return mockMvc.perform(post("/api/columns")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"%s\"}".formatted(name)));
+        return mockMvc.perform(
+                post("/api/columns")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"%s\"}".formatted(name)));
     }
 
     private ResultActions deleteColumn(MockHttpSession session, Long id) throws Exception {
@@ -76,13 +81,19 @@ class ColumnCrudIntegrationTest {
     }
 
     private long addCard(MockHttpSession session, Long columnId, String title) throws Exception {
-        String body = mockMvc.perform(post("/api/cards")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"columnId\":%d,\"title\":\"%s\"}".formatted(columnId, title)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+        String body =
+                mockMvc.perform(
+                                post("/api/cards")
+                                        .session(session)
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"columnId\":%d,\"title\":\"%s\"}"
+                                                        .formatted(columnId, title)))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         return Long.parseLong(body.replaceAll(".*\"id\":(\\d+).*", "$1"));
     }
 
@@ -107,11 +118,12 @@ class ColumnCrudIntegrationTest {
         addColumn(session, "").andExpect(status().isBadRequest());
         addColumn(session, "   ").andExpect(status().isBadRequest());
         addColumn(session, "あ".repeat(21)).andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/columns")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+        mockMvc.perform(
+                        post("/api/columns")
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
                 .andExpect(status().isBadRequest());
 
         addColumn(session, "あ".repeat(20)).andExpect(status().isCreated());
@@ -160,8 +172,10 @@ class ColumnCrudIntegrationTest {
 
         deleteColumn(session, first).andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/cards/" + cardInFirst).session(session)).andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/cards/" + cardInSecond).session(session)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/cards/" + cardInFirst).session(session))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/cards/" + cardInSecond).session(session))
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/columns").session(session))
                 .andExpect(jsonPath("$[*].name").value(contains("進行中", "完了")))
                 .andExpect(jsonPath("$[*].position").value(contains(0, 1)));
@@ -188,17 +202,21 @@ class ColumnCrudIntegrationTest {
         MockHttpSession session = newSession();
         Long column = columnsOf(username).get(0).getId();
 
-        mockMvc.perform(post("/api/columns")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"x\"}"))
+        mockMvc.perform(
+                        post("/api/columns")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"x\"}"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/columns")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"x\"}"))
+        mockMvc.perform(
+                        post("/api/columns")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"x\"}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(delete("/api/columns/" + column).session(session)).andExpect(status().isForbidden());
-        mockMvc.perform(delete("/api/columns/" + column).with(csrf())).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/columns/" + column).session(session))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/columns/" + column).with(csrf()))
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -49,7 +49,9 @@ class SpaFallbackTest {
 
     @Test
     void 画面のURLを直接開いてもフロントエンドが返る() throws Exception {
-        mockMvc.perform(get("/login")).andExpect(status().isOk()).andExpect(content().string(containsString(MARKER)));
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(MARKER)));
         mockMvc.perform(get("/some/deep/path"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(MARKER)));
@@ -68,14 +70,19 @@ class SpaFallbackTest {
 
         // ログイン済みなら404(index.htmlにはならない)
         username = "test_" + UUID.randomUUID().toString().substring(0, 8);
-        MockHttpSession session = (MockHttpSession) mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(username)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getRequest()
-                .getSession(false);
+        MockHttpSession session =
+                (MockHttpSession)
+                        mockMvc.perform(
+                                        post("/api/auth/register")
+                                                .with(csrf())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(
+                                                        "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                                .formatted(username)))
+                                .andExpect(status().isCreated())
+                                .andReturn()
+                                .getRequest()
+                                .getSession(false);
         mockMvc.perform(get("/api/no-such-endpoint").session(session))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string(org.hamcrest.Matchers.not(containsString(MARKER))));

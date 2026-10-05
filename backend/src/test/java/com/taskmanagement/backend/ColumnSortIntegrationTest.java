@@ -45,12 +45,16 @@ class ColumnSortIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         username = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(username);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(username)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(username)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
@@ -60,31 +64,37 @@ class ColumnSortIntegrationTest {
         return columns.get(0).getId();
     }
 
-    private void addCard(MockHttpSession session, Long columnId, String title, String priority, String dueDate)
+    private void addCard(
+            MockHttpSession session, Long columnId, String title, String priority, String dueDate)
             throws Exception {
-        String json = "{\"columnId\":%d,\"title\":\"%s\",\"priority\":%s,\"dueDate\":%s}"
-                .formatted(
-                        columnId,
-                        title,
-                        priority == null ? "null" : "\"" + priority + "\"",
-                        dueDate == null ? "null" : "\"" + dueDate + "\"");
-        mockMvc.perform(post("/api/cards")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+        String json =
+                "{\"columnId\":%d,\"title\":\"%s\",\"priority\":%s,\"dueDate\":%s}"
+                        .formatted(
+                                columnId,
+                                title,
+                                priority == null ? "null" : "\"" + priority + "\"",
+                                dueDate == null ? "null" : "\"" + dueDate + "\"");
+        mockMvc.perform(
+                        post("/api/cards")
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json))
                 .andExpect(status().isCreated());
     }
 
-    private ResultActions sort(MockHttpSession session, Long columnId, String body) throws Exception {
-        return mockMvc.perform(put("/api/columns/" + columnId + "/sort")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
+    private ResultActions sort(MockHttpSession session, Long columnId, String body)
+            throws Exception {
+        return mockMvc.perform(
+                put("/api/columns/" + columnId + "/sort")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body));
     }
 
-    private void assertOrder(MockHttpSession session, Long columnId, String... titles) throws Exception {
+    private void assertOrder(MockHttpSession session, Long columnId, String... titles)
+            throws Exception {
         Integer[] positions = new Integer[titles.length];
         for (int i = 0; i < positions.length; i++) {
             positions[i] = i;
@@ -158,15 +168,17 @@ class ColumnSortIntegrationTest {
         MockHttpSession session = newSession();
         Long col = firstColumnId();
 
-        mockMvc.perform(put("/api/columns/" + col + "/sort")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"by\":\"PRIORITY\"}"))
+        mockMvc.perform(
+                        put("/api/columns/" + col + "/sort")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"by\":\"PRIORITY\"}"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(put("/api/columns/" + col + "/sort")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"by\":\"PRIORITY\"}"))
+        mockMvc.perform(
+                        put("/api/columns/" + col + "/sort")
+                                .session(session)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"by\":\"PRIORITY\"}"))
                 .andExpect(status().isForbidden());
     }
 }

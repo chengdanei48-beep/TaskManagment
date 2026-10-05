@@ -6,8 +6,9 @@ import com.taskmanagement.backend.dto.CardResponse;
 import com.taskmanagement.backend.entity.Priority;
 import com.taskmanagement.backend.security.AppUserDetails;
 import com.taskmanagement.backend.service.CardService;
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,10 +17,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/cards")
 public class CardController {
 
     private final CardService cardService;
@@ -28,7 +31,7 @@ public class CardController {
         this.cardService = cardService;
     }
 
-    @GetMapping("/api/cards")
+    @GetMapping
     public List<CardResponse> search(
             @AuthenticationPrincipal AppUserDetails user,
             @RequestParam(required = false) Long columnId,
@@ -37,45 +40,40 @@ public class CardController {
         return cardService.search(user.getId(), columnId, priority, keyword);
     }
 
-    @GetMapping("/api/cards/{id}")
-    public ResponseEntity<CardResponse> findById(
+    @GetMapping("/{id}")
+    public CardResponse findById(
             @AuthenticationPrincipal AppUserDetails user, @PathVariable Long id) {
-        return cardService.findById(user.getId(), id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return cardService.findById(user.getId(), id);
     }
 
-    @PostMapping("/api/cards")
+    @PostMapping
     public ResponseEntity<CardResponse> create(
-            @AuthenticationPrincipal AppUserDetails user, @RequestBody CardRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(cardService.create(user.getId(), request));
+            @AuthenticationPrincipal AppUserDetails user, @Valid @RequestBody CardRequest request) {
+        CardResponse created = cardService.create(user.getId(), request);
+        return ResponseEntity.created(URI.create("/api/cards/" + created.id())).body(created);
     }
 
-    @PutMapping("/api/cards/{id}")
-    public ResponseEntity<CardResponse> update(
+    @PutMapping("/{id}")
+    public CardResponse update(
             @AuthenticationPrincipal AppUserDetails user,
             @PathVariable Long id,
-            @RequestBody CardRequest request) {
-        return cardService.update(user.getId(), id, request)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+            @Valid @RequestBody CardRequest request) {
+        return cardService.update(user.getId(), id, request);
     }
 
-    @PutMapping("/api/cards/{id}/move")
+    @PutMapping("/{id}/move")
     public ResponseEntity<Void> move(
             @AuthenticationPrincipal AppUserDetails user,
             @PathVariable Long id,
-            @RequestBody CardMoveRequest request) {
-        return cardService.move(user.getId(), id, request)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
+            @Valid @RequestBody CardMoveRequest request) {
+        cardService.move(user.getId(), id, request);
+        return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/api/cards/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal AppUserDetails user, @PathVariable Long id) {
-        return cardService.delete(user.getId(), id)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
+        cardService.delete(user.getId(), id);
+        return ResponseEntity.noContent().build();
     }
 }

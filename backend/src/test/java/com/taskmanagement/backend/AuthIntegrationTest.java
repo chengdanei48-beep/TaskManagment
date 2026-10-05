@@ -1,8 +1,8 @@
 package com.taskmanagement.backend;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -59,10 +59,11 @@ class AuthIntegrationTest {
     }
 
     private MvcResult register(String username) throws Exception {
-        return mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(username, PASSWORD)))
+        return mockMvc.perform(
+                        post("/api/auth/register")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(username, PASSWORD)))
                 .andExpect(status().isCreated())
                 .andReturn();
     }
@@ -110,24 +111,27 @@ class AuthIntegrationTest {
         String username = newUsername();
         register(username);
 
-        mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(username, PASSWORD)))
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(username, PASSWORD)))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void 短すぎるパスワードと空のユーザー名は400() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(newUsername(), "short")))
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(newUsername(), "short")))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(" ", PASSWORD)))
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(" ", PASSWORD)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -136,27 +140,31 @@ class AuthIntegrationTest {
         String username = newUsername();
         register(username);
 
-        MvcResult ok = mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(username, PASSWORD)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value(username))
-                .andReturn();
+        MvcResult ok =
+                mockMvc.perform(
+                                post("/api/auth/login")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(json(username, PASSWORD)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.username").value(username))
+                        .andReturn();
         mockMvc.perform(get("/api/auth/me").session(sessionOf(ok)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
-        mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(username, "wrong-password")))
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(username, "wrong-password")))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("no_such_user", PASSWORD)))
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json("no_such_user", PASSWORD)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -173,9 +181,10 @@ class AuthIntegrationTest {
 
     @Test
     void CSRFトークンなしのPOSTは403() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("x", PASSWORD)))
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json("x", PASSWORD)))
                 .andExpect(status().isForbidden());
     }
 
@@ -208,24 +217,30 @@ class AuthIntegrationTest {
         mockMvc.perform(get("/api/cards?columnId=" + columnA.getId()).session(sessionB))
                 .andExpect(jsonPath("$", hasSize(0)));
         mockMvc.perform(get("/api/columns").session(sessionB))
-                .andExpect(jsonPath("$[*].id", not(org.hamcrest.Matchers.hasItem(columnA.getId().intValue()))));
+                .andExpect(
+                        jsonPath(
+                                "$[*].id",
+                                not(org.hamcrest.Matchers.hasItem(columnA.getId().intValue()))));
     }
 
     @Test
     void エラー応答にパスワードを含めない() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("no_such_user", "secret-password-xyz")))
+        mockMvc.perform(
+                        post("/api/auth/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json("no_such_user", "secret-password-xyz")))
                 .andExpect(status().isUnauthorized())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(not(containsString("secret-password-xyz"))));
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                                .string(not(containsString("secret-password-xyz"))));
     }
 
     private Long userIdOf(MockHttpSession session) throws Exception {
-        MvcResult me = mockMvc.perform(get("/api/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult me =
+                mockMvc.perform(get("/api/auth/me").session(session))
+                        .andExpect(status().isOk())
+                        .andReturn();
         String body = me.getResponse().getContentAsString();
         return Long.valueOf(body.replaceAll(".*\"id\":(\\d+).*", "$1"));
     }

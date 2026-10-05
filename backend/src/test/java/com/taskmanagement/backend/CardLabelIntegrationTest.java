@@ -44,12 +44,16 @@ class CardLabelIntegrationTest {
     private MockHttpSession newSession() throws Exception {
         String name = "test_" + UUID.randomUUID().toString().substring(0, 8);
         createdUsernames.add(name);
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"%s\",\"password\":\"password123\"}".formatted(name)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/auth/register")
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"username\":\"%s\",\"password\":\"password123\"}"
+                                                        .formatted(name)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
@@ -59,16 +63,23 @@ class CardLabelIntegrationTest {
     }
 
     private long createLabel(MockHttpSession session, String name) throws Exception {
-        return idOf(mockMvc.perform(post("/api/labels")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"%s\",\"color\":\"#00AA00\"}".formatted(name))));
+        return idOf(
+                mockMvc.perform(
+                        post("/api/labels")
+                                .session(session)
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"name\":\"%s\",\"color\":\"#00AA00\"}"
+                                                .formatted(name))));
     }
 
     private long firstColumnId(MockHttpSession session) throws Exception {
-        String body = mockMvc.perform(get("/api/auth/me").session(session))
-                .andReturn().getResponse().getContentAsString();
+        String body =
+                mockMvc.perform(get("/api/auth/me").session(session))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
         long userId = Long.parseLong(body.replaceAll(".*\"id\":(\\d+).*", "$1"));
         return boardColumnRepository.findByUserIdOrderByPosition(userId).get(0).getId();
     }
@@ -76,21 +87,25 @@ class CardLabelIntegrationTest {
     private ResultActions createCard(MockHttpSession session, long columnId, String labelIdsJson)
             throws Exception {
         String labels = labelIdsJson == null ? "" : ",\"labelIds\":" + labelIdsJson;
-        return mockMvc.perform(post("/api/cards")
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"columnId\":%d,\"title\":\"カード\"%s}".formatted(columnId, labels)));
+        return mockMvc.perform(
+                post("/api/cards")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"columnId\":%d,\"title\":\"カード\"%s}"
+                                        .formatted(columnId, labels)));
     }
 
     private ResultActions updateCard(MockHttpSession session, long cardId, String labelIdsJson)
             throws Exception {
         String labels = labelIdsJson == null ? "" : ",\"labelIds\":" + labelIdsJson;
-        return mockMvc.perform(put("/api/cards/" + cardId)
-                .session(session)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"更新\"%s}".formatted(labels)));
+        return mockMvc.perform(
+                put("/api/cards/" + cardId)
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"更新\"%s}".formatted(labels)));
     }
 
     @Test
@@ -116,9 +131,11 @@ class CardLabelIntegrationTest {
         long columnId = firstColumnId(session);
         long a = createLabel(session, "A");
 
-        long cardId = idOf(createCard(session, columnId, null)
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.labels", hasSize(0))));
+        long cardId =
+                idOf(
+                        createCard(session, columnId, null)
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.labels", hasSize(0))));
         updateCard(session, cardId, "[%d]".formatted(a))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.labels", hasSize(1)));
@@ -137,7 +154,8 @@ class CardLabelIntegrationTest {
         long columnId = firstColumnId(session);
         long othersLabel = createLabel(other, "他人");
 
-        createCard(session, columnId, "[%d]".formatted(othersLabel)).andExpect(status().isNotFound());
+        createCard(session, columnId, "[%d]".formatted(othersLabel))
+                .andExpect(status().isNotFound());
         createCard(session, columnId, "[999999999]").andExpect(status().isNotFound());
     }
 

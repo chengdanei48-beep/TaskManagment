@@ -1,13 +1,16 @@
 package com.taskmanagement.backend.security;
 
 import com.taskmanagement.backend.entity.User;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 /** セッションに保存する認証済みユーザー。データ分離のため利用者IDを保持する。 */
-public class AppUserDetails implements UserDetails {
+public class AppUserDetails implements UserDetails, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final Long id;
     private final String username;
