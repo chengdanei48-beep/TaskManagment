@@ -123,6 +123,8 @@ cd frontend && npm run build     # 型チェック + ビルド
 | DELETE | `/api/labels/{id}` | ラベルの削除 |
 | GET | `/api/health` | ヘルスチェック |
 
+カードの作成・更新(`POST /api/cards`、`PUT /api/cards/{id}`)は `labelIds`(ラベルIDの配列)を受け取り、カードのレスポンスには `labels` が含まれます。更新で `labelIds` を省略すると変更されず、空配列を送るとすべて外れます。他人のラベルIDは404です。
+
 ## jar にまとめて起動する(配布・利用時)
 
 フロントエンドをビルドして jar に同梱すると、起動するプロセスは1つ(Spring Boot)だけになります。

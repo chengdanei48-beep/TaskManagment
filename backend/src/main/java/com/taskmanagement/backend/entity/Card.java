@@ -10,10 +10,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "cards")
@@ -45,6 +50,14 @@ public class Card {
 
     @Column(nullable = false)
     private Integer position;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "card_labels",
+            joinColumns = @JoinColumn(name = "card_id"),
+            inverseJoinColumns = @JoinColumn(name = "label_id"))
+    @BatchSize(size = 100)
+    private Set<Label> labels = new LinkedHashSet<>();
 
     @PrePersist
     void onCreate() {
@@ -115,5 +128,13 @@ public class Card {
 
     public void setPosition(Integer position) {
         this.position = position;
+    }
+
+    public Set<Label> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(Set<Label> labels) {
+        this.labels = labels;
     }
 }
