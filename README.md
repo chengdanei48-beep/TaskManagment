@@ -25,7 +25,7 @@ Trello のような「かんばん方式」のタスク管理アプリです。�
 | ビルド | Maven(Maven Wrapper) | 3.9.16 |
 | データベース | PostgreSQL(開発は Docker)/ マイグレーションは Flyway | 17(利用者向けは 15 以降を推奨) |
 | フロントエンド | React / TypeScript / Vite / React Router | React 19.3.0 / TypeScript 7.0.2 / Vite 8.3.2 / React Router 7.18.4 |
-| Lint | Oxlint | 1.86.0 |
+| Lint(フロントエンド) | Oxlint | 1.86.0 |
 | 実行基盤(フロントのビルド) | Node.js / npm | v24.21.0 / 11.19.0 |
 | ソース管理 | Git / GitHub | Git 2.55.0(開発環境) |
 
@@ -38,9 +38,9 @@ TaskManagment/
 ├─ backend/        … バックエンド(Spring Boot)
 │  └─ src/main/
 │     ├─ java/com/taskmanagement/backend/
-│     │  ├─ config/ controller/ service/ repository/ entity/
+│     │  ├─ config/ controller/ service/ repository/ entity/ dto/ security/ exception/
 │     └─ resources/
-│        ├─ application.properties … DB接続・ポート等の設定
+│        ├─ application.properties … DB接続・ポート等の設定(application-dev.properties は開発用)
 │        ├─ db/migration/          … Flyway マイグレーション(テーブル定義)
 │        └─ db/seed/               … 開発用 seed データ(dev プロファイルのみ)
 ├─ frontend/       … フロントエンド(React + Vite)
@@ -98,10 +98,14 @@ TaskManagment/
 ## テスト・Lint
 
 ```
-cd backend && ./mvnw test        # バックエンド(統合テスト。DB の起動が必要)
-cd frontend && npm run lint      # フロントエンドの静的解析
+cd backend && ./mvnw verify      # バックエンド: 統合テスト(DB の起動が必要)+ Spotless(整形)・Checkstyle・SpotBugs
+cd backend && ./mvnw spotless:apply  # 整形の自動修正
+cd frontend && npm run lint      # フロントエンドの静的解析(Oxlint)
+cd frontend && npm run typecheck # 型チェック
 cd frontend && npm run build     # 型チェック + ビルド
 ```
+
+PR では GitHub Actions(`.github/workflows/ci.yml`)が同じ内容を実行します。品質レビューの観点は `.claude/skills/quality-review/SKILL.md`(Claude Code のスキル `quality-review`)にまとめています。
 
 ## API
 
@@ -116,12 +120,14 @@ cd frontend && npm run build     # 型チェック + ビルド
 | GET / POST | `/api/columns` | 列の一覧 / 追加 |
 | DELETE | `/api/columns/{id}` | 列の削除 |
 | PUT | `/api/columns/{id}/sort` | 列内のカードを並び替え |
-| GET / POST | `/api/cards` | カードの一覧 / 追加 |
+| GET / POST | `/api/cards` | カードの一覧(クエリ `columnId` `priority` `keyword` で絞り込み)/ 追加 |
 | GET / PUT / DELETE | `/api/cards/{id}` | カードの取得 / 更新 / 削除 |
 | PUT | `/api/cards/{id}/move` | カードの移動 |
 | GET / POST | `/api/labels` | ラベルの一覧 / 登録 |
 | DELETE | `/api/labels/{id}` | ラベルの削除 |
 | GET | `/api/health` | ヘルスチェック |
+
+エラーは HTTP ステータス(400 入力誤り / 401 未ログイン / 403 CSRF / 404 対象なし / 409 競合)と、`detail` を含む JSON(ProblemDetail)で返します。詳細は要件定義書 7.6 を参照してください。
 
 カードの作成・更新(`POST /api/cards`、`PUT /api/cards/{id}`)は `labelIds`(ラベルIDの配列)を受け取り、カードのレスポンスには `labels` が含まれます。更新で `labelIds` を省略すると変更されず、空配列を送るとすべて外れます。他人のラベルIDは404です。
 

@@ -1,6 +1,6 @@
 # タスク管理アプリ 遷移図・データフロー・ER図(DB版)
 
-要件定義書([requirements.md](requirements.md) v3.2)の補足資料です。データはPC内のバックエンド(Java / Spring Boot)経由でデータベース(PostgreSQL)に保存します。
+要件定義書([requirements.md](requirements.md) v3.4)の補足資料です。データはPC内のバックエンド(Java / Spring Boot)経由でデータベース(PostgreSQL)に保存します。
 GitHub 上でこのファイルを開くと、以下の図がそのまま表示されます。
 
 画面のモックアップ(見た目)は [screen-design.html](screen-design.html) を参照してください。
@@ -49,7 +49,7 @@ flowchart LR
 flowchart LR
     User["利用者\nログイン・入力\nドラッグ&ドロップ"]
     Browser["画面(ブラウザ)\nReact(ビルド済み静的ファイル)"]
-    Server["バックエンド\nJava / Spring Boot\nログイン確認・入力チェック・期限判定"]
+    Server["バックエンド\nJava / Spring Boot\nログイン確認・入力チェック"]
     DB[("データベース\nPostgreSQL\n(PC内で起動)")]
 
     User -- 操作 --> Browser
@@ -65,7 +65,7 @@ flowchart LR
 1. **ログイン時**: バックエンド(Spring Security)がユーザー名・パスワードをDBと照合します。一致すればログイン成功とし、その利用者のデータのみを扱います。
 2. **表示時**: バックエンドがログイン中の利用者の列・カードだけをDBから取得し、画面に渡します。
 3. **操作時**: 追加・編集・削除・移動・並び替えのたびに、バックエンドが入力をチェックしてDBを更新します。
-4. **表示更新**: 更新結果を画面(React)が受け取り、描き直します(期限切れの赤表示もこのとき判定)。
+4. **表示更新**: 更新結果を画面(React)が受け取り、描き直します(期限切れの赤表示は、画面側でこのとき判定します)。
 
 ※ バックエンドは、そのPCの中だけで通信します(インターネットには接続しません)。
 
@@ -73,12 +73,15 @@ flowchart LR
 
 ## 3. ER図(実装のDB設計)
 
-要件定義書 7章のテーブル定義を図にしたものです。1人の利用者(users)が複数の列(columns)を持ち、1つの列が複数のカード(cards)を持ちます。
+要件定義書 7章のテーブル定義を図にしたものです。1人の利用者(users)が複数の列(columns)とラベル(labels)を持ち、1つの列が複数のカード(cards)を持ちます。カードとラベルは多対多で、card_labels で紐付けます。
 
 ```mermaid
 erDiagram
     USERS ||--o{ COLUMNS : "持つ"
     COLUMNS ||--o{ CARDS : "持つ"
+    USERS ||--o{ LABELS : "持つ"
+    CARDS ||--o{ CARD_LABELS : "付く"
+    LABELS ||--o{ CARD_LABELS : "付ける"
 
     USERS {
         int id PK
@@ -98,20 +101,34 @@ erDiagram
         string title "1〜50文字、必須"
         string description "500文字まで、任意"
         date due_date "任意"
-        string priority "high/medium/low、未設定可"
+        string priority "HIGH/MEDIUM/LOW、未設定可"
         datetime created_at "自動記録"
         int position "列内の表示順(自由な並び替え・並び替えボタンの結果)"
+    }
+    LABELS {
+        int id PK
+        int user_id FK
+        string name "1〜20文字、利用者内で重複不可"
+        string color "#RRGGBB"
+        datetime created_at
+    }
+    CARD_LABELS {
+        int card_id PK, FK
+        int label_id PK, FK
     }
 ```
 
 | テーブル | 列名 | 制約(要件定義書 5章・7章より) |
 |---|---|---|
-| users | username | 必須。重複不可 |
+| users | username | 必須。1〜50文字。重複不可(大文字・小文字は区別) |
 | users | password_hash | 必須。平文では保存しない |
 | columns | name | 1〜20文字。利用者ごとに最大10列 |
 | columns | user_id | users.id への外部キー |
 | cards | title | 1〜50文字、必須 |
 | cards | description | 500文字まで、任意 |
 | cards | due_date | 任意。未入力なら期限切れ判定なし |
-| cards | priority | high(重)/medium(中)/low(低)/未設定。カード上に色分けバッジで表示 |
+| cards | priority | HIGH(重)/MEDIUM(中)/LOW(低)/未設定。カード上に色分けバッジで表示 |
 | cards | column_id | columns.id への外部キー |
+| labels | name | 1〜20文字。利用者ごとに重複不可 |
+| labels | color | `#RRGGBB` 形式 |
+| card_labels | card_id, label_id | 複合主キー。カードまたはラベルの削除で紐付けも削除 |
