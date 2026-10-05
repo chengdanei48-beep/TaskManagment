@@ -33,3 +33,10 @@ export function moveCard(id: number, columnId: number, beforeCardId: number | nu
     body: { columnId, beforeCardId },
   })
 }
+
+export type SortKey = 'PRIORITY' | 'DUE_DATE'
+
+/** 列内のカードを並び替え、結果をサーバーに保存する。 */
+export function sortColumn(columnId: number, by: SortKey): Promise<void> {
+  return request<void>(`/api/columns/${columnId}/sort`, { method: 'PUT', body: { by } })
+}

@@ -1,4 +1,5 @@
 import type { DragEvent } from 'react'
+import type { SortKey } from '../api/cards'
 import type { BoardColumn, Card as CardData } from '../types'
 import { Card } from './Card'
 
@@ -18,6 +19,7 @@ interface Props {
   onDragOverPosition: (columnId: number, beforeCardId: number | null) => void
   onDragLeaveColumn: () => void
   onDrop: () => void
+  onSort: (by: SortKey) => void
 }
 
 export function Column({
@@ -32,6 +34,7 @@ export function Column({
   onDragOverPosition,
   onDragLeaveColumn,
   onDrop,
+  onSort,
 }: Props) {
   const done = column.name === DONE_COLUMN_NAME
 
@@ -73,6 +76,14 @@ export function Column({
       <h2 className="col-head">
         {column.name} <span className="count">{cards.length}</span>
       </h2>
+      <div className="sort-buttons">
+        <button type="button" onClick={() => onSort('PRIORITY')} disabled={cards.length < 2}>
+          優先度順
+        </button>
+        <button type="button" onClick={() => onSort('DUE_DATE')} disabled={cards.length < 2}>
+          期限順
+        </button>
+      </div>
       {cards.length === 0 && dropBefore === undefined && <p className="empty">カードなし</p>}
       {cards.map((card) => (
         <div key={card.id}>
