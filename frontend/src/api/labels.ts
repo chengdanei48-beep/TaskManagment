@@ -1,17 +1,5 @@
+import type { Label, LabelInput } from '../types'
 import { request } from './http'
-
-export interface Label {
-  id: number
-  name: string
-  color: string
-  createdAt: string
-}
-
-export interface LabelInput {
-  name: string
-  /** #RRGGBB 形式 */
-  color: string
-}
 
 export function fetchLabels(signal?: AbortSignal): Promise<Label[]> {
   return request<Label[]>('/api/labels', { signal })

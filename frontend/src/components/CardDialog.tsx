@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../api/http'
-import type { Card, CardInput, Priority } from '../types'
+import { LABEL_NAME_MAX, type Card, type CardInput, type Label, type LabelInput, type Priority } from '../types'
+import { LabelChip } from './LabelChip'
 
 const TITLE_MAX = 50
 const DESCRIPTION_MAX = 500
+const DEFAULT_LABEL_COLOR = '#0c66e4'
 
 export type DialogTarget =
   | { mode: 'create'; columnId: number; columnName: string }
@@ -12,6 +14,10 @@ export type DialogTarget =
 
 interface Props {
   target: DialogTarget
+  /** 選べるラベルの一覧 */
+  labels: Label[]
+  onCreateLabel: (input: LabelInput) => Promise<Label>
+  onDeleteLabel: (id: number) => Promise<void>
   onSave: (input: CardInput) => Promise<void>
   onDelete?: () => Promise<void>
   onClose: () => void
@@ -25,8 +31,31 @@ function errorText(e: unknown): string {
   return '保存に失敗しました'
 }
 
-export function CardDialog({ target, onSave, onDelete, onClose }: Props) {
+function labelErrorText(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.status === 400) return `ラベル名は1〜${LABEL_NAME_MAX}文字で入力してください`
+    if (e.status === 409) return '同じ名前のラベルが既にあります'
+    if (e.status === 404) return 'ラベルが見つかりません。画面を更新してください'
+  }
+  return 'ラベルの操作に失敗しました'
+}
+
+export function CardDialog({
+  target,
+  labels,
+  onCreateLabel,
+  onDeleteLabel,
+  onSave,
+  onDelete,
+  onClose,
+}: Props) {
   const card = target.mode === 'edit' ? target.card : null
+  const [selectedLabelIds, setSelectedLabelIds] = useState<Set<number>>(
+    () => new Set(card?.labels.map((l) => l.id) ?? []),
+  )
+  const [newLabelName, setNewLabelName] = useState('')
+  const [newLabelColor, setNewLabelColor] = useState(DEFAULT_LABEL_COLOR)
+  const [labelError, setLabelError] = useState<string | null>(null)
   const [title, setTitle] = useState(card?.title ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
   const [dueDate, setDueDate] = useState(card?.dueDate ?? '')
@@ -53,6 +82,46 @@ export function CardDialog({ target, onSave, onDelete, onClose }: Props) {
     }
   }
 
+  function toggleLabel(id: number) {
+    setSelectedLabelIds((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+  }
+
+  async function addLabel() {
+    const name = newLabelName.trim()
+    if (name === '' || name.length > LABEL_NAME_MAX) {
+      setLabelError(`ラベル名は1〜${LABEL_NAME_MAX}文字で入力してください`)
+      return
+    }
+    setLabelError(null)
+    try {
+      const created = await onCreateLabel({ name, color: newLabelColor })
+      // 作ったラベルはそのまま選択状態にする
+      setSelectedLabelIds((prev) => new Set(prev).add(created.id))
+      setNewLabelName('')
+    } catch (e) {
+      setLabelError(labelErrorText(e))
+    }
+  }
+
+  async function removeLabel(label: Label) {
+    if (!window.confirm(`ラベル「${label.name}」を削除しますか?すべてのカードから外れます。`)) return
+    setLabelError(null)
+    try {
+      await onDeleteLabel(label.id)
+      setSelectedLabelIds((prev) => {
+        const next = new Set(prev)
+        next.delete(label.id)
+        return next
+      })
+    } catch (e) {
+      setLabelError(labelErrorText(e))
+    }
+  }
+
   function submit(e: FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
@@ -67,6 +136,8 @@ export function CardDialog({ target, onSave, onDelete, onClose }: Props) {
         description: description === '' ? null : description,
         dueDate: dueDate === '' ? null : dueDate,
         priority: priority === '' ? null : priority,
+        // 一覧にあるラベルだけ送る(他タブで削除済みのIDは除く)
+        labelIds: labels.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.id),
       }),
     )
   }
@@ -123,6 +194,60 @@ export function CardDialog({ target, onSave, onDelete, onClose }: Props) {
             <option value="LOW">低</option>
           </select>
         </label>
+        <fieldset className="label-picker">
+          <legend>ラベル</legend>
+          {labels.length === 0 && <span className="hint">ラベルはまだありません</span>}
+          {labels.map((label) => (
+            <div key={label.id} className="label-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedLabelIds.has(label.id)}
+                  onChange={() => toggleLabel(label.id)}
+                />
+                <LabelChip label={label} />
+              </label>
+              <button
+                type="button"
+                aria-label={`ラベル「${label.name}」を削除`}
+                onClick={() => void removeLabel(label)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <div className="label-new">
+            <input
+              type="text"
+              aria-label="新しいラベル名"
+              placeholder="新しいラベル名"
+              value={newLabelName}
+              maxLength={LABEL_NAME_MAX}
+              onChange={(e) => setNewLabelName(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter でカード本体が保存されないよう、ラベル追加として扱う
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void addLabel()
+                }
+              }}
+            />
+            <input
+              type="color"
+              aria-label="ラベルの色"
+              value={newLabelColor}
+              onChange={(e) => setNewLabelColor(e.target.value)}
+            />
+            <button type="button" onClick={() => void addLabel()}>
+              追加
+            </button>
+          </div>
+          {labelError && (
+            <p className="error" role="alert">
+              {labelError}
+            </p>
+          )}
+        </fieldset>
         {error && (
           <p className="error" role="alert">
             {error}

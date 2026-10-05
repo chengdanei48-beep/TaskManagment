@@ -1,4 +1,5 @@
 import type { Card as CardData, Priority } from '../types'
+import { LabelChip } from './LabelChip'
 
 const PRIORITY_LABEL: Record<Priority, string> = {
   HIGH: '高',
@@ -48,6 +49,13 @@ export function Card({ card, done, dragging, onClick, onDragStart, onDragEnd }: 
         }
       }}
     >
+      {card.labels.length > 0 && (
+        <div className="label-list">
+          {card.labels.map((label) => (
+            <LabelChip key={label.id} label={label} />
+          ))}
+        </div>
+      )}
       <div className="card-title">{card.title}</div>
       <div className="meta">
         {card.priority && (
