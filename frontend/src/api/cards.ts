@@ -40,3 +40,12 @@ export type SortKey = 'PRIORITY' | 'DUE_DATE'
 export function sortColumn(columnId: number, by: SortKey): Promise<void> {
   return request<void>(`/api/columns/${columnId}/sort`, { method: 'PUT', body: { by } })
 }
+
+export function createColumn(name: string): Promise<BoardColumn> {
+  return request<BoardColumn>('/api/columns', { method: 'POST', body: { name } })
+}
+
+/** 列を削除する。列内のカードも一緒に削除される。 */
+export function deleteColumn(id: number): Promise<void> {
+  return request<void>(`/api/columns/${id}`, { method: 'DELETE' })
+}

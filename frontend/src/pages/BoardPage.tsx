@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   createCard,
+  createColumn,
+  deleteColumn,
   deleteCard,
   fetchCards,
   fetchColumns,
@@ -12,9 +14,10 @@ import {
 import { ApiError } from '../api/http'
 import { useAuth } from '../auth/AuthContext'
 import { CardDialog, type DialogTarget } from '../components/CardDialog'
+import { AddColumn } from '../components/AddColumn'
 import { Column } from '../components/Column'
 import { SearchBar, type SearchState } from '../components/SearchBar'
-import type { BoardColumn, Card } from '../types'
+import { COLUMN_LIMIT, type BoardColumn, type Card } from '../types'
 
 const DEBOUNCE_MS = 300
 
@@ -72,7 +75,7 @@ export function BoardPage() {
         else setColumnsError(errorMessage(e))
       })
     return () => controller.abort()
-  }, [expire])
+  }, [expire, reload])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -139,6 +142,28 @@ export function BoardPage() {
   function endDrag() {
     setDraggingCardId(null)
     setDropTarget(null)
+  }
+
+  async function handleDeleteColumn(column: BoardColumn) {
+    // カードがある列だけ確認する(要件 C-3)。件数は絞り込みに関係なく全件
+    if (
+      column.cardCount > 0 &&
+      !window.confirm(
+        `「${column.name}」には ${column.cardCount} 件のカードがあります。カードも一緒に削除されます。よろしいですか?`,
+      )
+    ) {
+      return
+    }
+    setActionError(null)
+    try {
+      await mutate(() => deleteColumn(column.id))
+      // 削除した列で絞り込み中なら解除する(存在しない列での検索を防ぐ)
+      setSearch((s) => (s.columnId === column.id ? { ...s, columnId: '' } : s))
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) {
+        setActionError('列を削除できませんでした。画面を更新してもう一度お試しください')
+      }
+    }
   }
 
   async function handleSort(targetColumnId: number, by: SortKey) {
@@ -209,8 +234,12 @@ export function BoardPage() {
             onDragLeaveColumn={() => setDropTarget(null)}
             onDrop={() => void handleDrop()}
             onSort={(by) => void handleSort(column.id, by)}
+            onDelete={() => void handleDeleteColumn(column)}
           />
         ))}
+        {columns.length < COLUMN_LIMIT && (
+          <AddColumn onAdd={(name) => mutate(() => createColumn(name))} />
+        )}
       </div>
       {dialog && (
         <CardDialog

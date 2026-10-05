@@ -20,6 +20,7 @@ interface Props {
   onDragLeaveColumn: () => void
   onDrop: () => void
   onSort: (by: SortKey) => void
+  onDelete: () => void
 }
 
 export function Column({
@@ -35,6 +36,7 @@ export function Column({
   onDragLeaveColumn,
   onDrop,
   onSort,
+  onDelete,
 }: Props) {
   const done = column.name === DONE_COLUMN_NAME
 
@@ -73,9 +75,24 @@ export function Column({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <h2 className="col-head">
-        {column.name} <span className="count">{cards.length}</span>
-      </h2>
+      <div className="col-header">
+        <h2 className="col-head">
+          {column.name} <span className="count">{cards.length}</span>
+        </h2>
+        <details className="col-menu">
+          <summary aria-label={`${column.name}のメニュー`}>⋯</summary>
+          <button
+            type="button"
+            className="danger"
+            onClick={(e) => {
+              e.currentTarget.closest('details')?.removeAttribute('open')
+              onDelete()
+            }}
+          >
+            列を削除
+          </button>
+        </details>
+      </div>
       <div className="sort-buttons">
         <button type="button" onClick={() => onSort('PRIORITY')} disabled={cards.length < 2}>
           優先度順
