@@ -360,3 +360,64 @@ button.danger {
   padding: 2px 8px;
   font-size: 12px;
 }
+
+.col-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.col-menu {
+  position: relative;
+}
+
+.col-menu summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--sub);
+  padding: 0 6px;
+  border-radius: 4px;
+}
+
+.col-menu summary:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+
+.col-menu[open] button {
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.add-col {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px dashed #aaa;
+  border-radius: 8px;
+  width: 200px;
+  flex: none;
+  padding: 10px;
+  font-size: 14px;
+  color: var(--sub);
+  text-align: left;
+}
+
+.add-col-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-col-form input {
+  border: 1px solid #b6bcc8;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: var(--text);
+}
+
+.add-col-form .error {
+  margin: 0;
+}
