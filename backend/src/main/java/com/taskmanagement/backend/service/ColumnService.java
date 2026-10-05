@@ -14,8 +14,8 @@ public class ColumnService {
         this.boardColumnRepository = boardColumnRepository;
     }
 
-    public List<ColumnResponse> findAll() {
-        return boardColumnRepository.findAllByOrderByPosition().stream()
+    public List<ColumnResponse> findAll(Long userId) {
+        return boardColumnRepository.findByUserIdOrderByPosition(userId).stream()
                 .map(ColumnResponse::from)
                 .toList();
     }

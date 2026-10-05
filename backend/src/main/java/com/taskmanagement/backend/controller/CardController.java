@@ -2,9 +2,11 @@ package com.taskmanagement.backend.controller;
 
 import com.taskmanagement.backend.dto.CardResponse;
 import com.taskmanagement.backend.entity.Priority;
+import com.taskmanagement.backend.security.AppUserDetails;
 import com.taskmanagement.backend.service.CardService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,15 +23,17 @@ public class CardController {
 
     @GetMapping("/api/cards")
     public List<CardResponse> search(
+            @AuthenticationPrincipal AppUserDetails user,
             @RequestParam(required = false) Long columnId,
             @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) String keyword) {
-        return cardService.search(columnId, priority, keyword);
+        return cardService.search(user.getId(), columnId, priority, keyword);
     }
 
     @GetMapping("/api/cards/{id}")
-    public ResponseEntity<CardResponse> findById(@PathVariable Long id) {
-        return cardService.findById(id)
+    public ResponseEntity<CardResponse> findById(
+            @AuthenticationPrincipal AppUserDetails user, @PathVariable Long id) {
+        return cardService.findById(user.getId(), id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

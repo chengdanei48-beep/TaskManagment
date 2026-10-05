@@ -16,13 +16,14 @@ public class CardService {
         this.cardRepository = cardRepository;
     }
 
-    public List<CardResponse> search(Long columnId, Priority priority, String keyword) {
-        return cardRepository.search(columnId, priority, keyword).stream()
+    public List<CardResponse> search(Long userId, Long columnId, Priority priority, String keyword) {
+        return cardRepository.search(userId, columnId, priority, keyword).stream()
                 .map(CardResponse::from)
                 .toList();
     }
 
-    public Optional<CardResponse> findById(Long id) {
-        return cardRepository.findById(id).map(CardResponse::from);
+    /** 他の利用者のカードは存在しないものとして扱う。 */
+    public Optional<CardResponse> findById(Long userId, Long id) {
+        return cardRepository.findByIdAndColumnUserId(id, userId).map(CardResponse::from);
     }
 }
