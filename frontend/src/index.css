@@ -243,3 +243,97 @@ button.link {
 .auth-form .error {
   margin: 0;
 }
+
+.btn-add {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--sub);
+}
+
+.btn-add:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+
+.card {
+  cursor: pointer;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 30, 66, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+}
+
+.dialog {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 20px rgba(9, 30, 66, 0.25);
+}
+
+.dialog h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.dialog input,
+.dialog textarea,
+.dialog select {
+  border: 1px solid #b6bcc8;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 14px;
+  background: #fafbfc;
+  color: inherit;
+}
+
+.dialog .req {
+  color: var(--danger-line);
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.dialog .error {
+  margin: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spacer {
+  flex: 1;
+}
+
+button.danger {
+  background: var(--danger-line);
+  border-color: var(--danger-line);
+  color: #fff;
+}
