@@ -1,14 +1,18 @@
 package com.taskmanagement.backend.service;
 
+import com.taskmanagement.backend.dto.ColumnRequest;
 import com.taskmanagement.backend.dto.ColumnResponse;
 import com.taskmanagement.backend.dto.ColumnSortRequest.SortKey;
+import com.taskmanagement.backend.entity.BoardColumn;
 import com.taskmanagement.backend.entity.Card;
 import com.taskmanagement.backend.repository.BoardColumnRepository;
 import com.taskmanagement.backend.repository.CardRepository;
+import com.taskmanagement.backend.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,18 +28,65 @@ public class ColumnService {
     private static final Comparator<Card> BY_DUE_DATE =
             Comparator.comparing(Card::getDueDate, Comparator.nullsLast(Comparator.<LocalDate>naturalOrder()));
 
+    static final int NAME_MAX = 20;
+    static final int COLUMN_LIMIT = 10;
+
     private final BoardColumnRepository boardColumnRepository;
     private final CardRepository cardRepository;
+    private final UserRepository userRepository;
 
-    public ColumnService(BoardColumnRepository boardColumnRepository, CardRepository cardRepository) {
+    public ColumnService(
+            BoardColumnRepository boardColumnRepository,
+            CardRepository cardRepository,
+            UserRepository userRepository) {
         this.boardColumnRepository = boardColumnRepository;
         this.cardRepository = cardRepository;
+        this.userRepository = userRepository;
     }
 
     public List<ColumnResponse> findAll(Long userId) {
         return boardColumnRepository.findByUserIdOrderByPosition(userId).stream()
-                .map(ColumnResponse::from)
+                .map(column -> ColumnResponse.from(column, cardRepository.countByColumnId(column.getId())))
                 .toList();
+    }
+
+    /** 列を末尾に追加する。列名は1〜20文字、列数は上限10(超えたら409)。 */
+    @Transactional
+    public ColumnResponse create(Long userId, ColumnRequest request) {
+        String name = request.name() == null ? "" : request.name().trim();
+        if (name.isEmpty() || name.length() > NAME_MAX) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "列名は1〜" + NAME_MAX + "文字で入力してください");
+        }
+        int count = boardColumnRepository.countByUserId(userId);
+        if (count >= COLUMN_LIMIT) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "列は最大" + COLUMN_LIMIT + "列までです");
+        }
+        BoardColumn column = new BoardColumn();
+        column.setUser(userRepository.getReferenceById(userId));
+        column.setName(name);
+        column.setPosition(count);
+        return ColumnResponse.from(boardColumnRepository.save(column), 0);
+    }
+
+    /**
+     * 列と、その列のカードを削除する(カードはDBの ON DELETE CASCADE で消える)。
+     * 残りの列の position は0からの連番に振り直す。列が存在しない・他人のものなら false。
+     */
+    @Transactional
+    public boolean delete(Long userId, Long columnId) {
+        Optional<BoardColumn> found = boardColumnRepository.findByIdAndUserId(columnId, userId);
+        if (found.isEmpty()) {
+            return false;
+        }
+        boardColumnRepository.delete(found.get());
+        boardColumnRepository.flush();
+        List<BoardColumn> rest = boardColumnRepository.findByUserIdOrderByPosition(userId);
+        for (int i = 0; i < rest.size(); i++) {
+            rest.get(i).setPosition(i);
+        }
+        return true;
     }
 
     /**
