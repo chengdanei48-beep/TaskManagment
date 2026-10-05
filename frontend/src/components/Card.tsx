@@ -1,11 +1,6 @@
-import type { Card as CardData, Priority } from '../types'
+import { formatDate } from '../format'
+import { PRIORITY_LABEL, type Card as CardData } from '../types'
 import { LabelChip } from './LabelChip'
-
-const PRIORITY_LABEL: Record<Priority, string> = {
-  HIGH: '高',
-  MEDIUM: '中',
-  LOW: '低',
-}
 
 function todayString(): string {
   const d = new Date()
@@ -59,13 +54,16 @@ export function Card({ card, done, dragging, onClick, onDragStart, onDragEnd }: 
       <div className="card-title">{card.title}</div>
       <div className="meta">
         {card.priority && (
-          <span className={`badge badge-${card.priority.toLowerCase()}`}>
+          <span
+            className={`badge badge-${card.priority.toLowerCase()}`}
+            aria-label={`優先度: ${PRIORITY_LABEL[card.priority]}`}
+          >
             {PRIORITY_LABEL[card.priority]}
           </span>
         )}
         {card.dueDate && (
           <span>
-            期限: {card.dueDate}
+            期限: {formatDate(card.dueDate)}
             {overdue && '(期限切れ)'}
           </span>
         )}

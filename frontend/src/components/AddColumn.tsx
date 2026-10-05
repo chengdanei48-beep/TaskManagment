@@ -1,7 +1,13 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../api/http'
 import { COLUMN_LIMIT, COLUMN_NAME_MAX } from '../types'
+
+interface Props {
+  onAdd: (name: string) => Promise<void>
+  /** 列数が上限に達している。追加はできず、その旨を表示する */
+  limitReached: boolean
+}
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
@@ -11,11 +17,12 @@ function errorText(e: unknown): string {
   return '列を追加できませんでした'
 }
 
-export function AddColumn({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
+export function AddColumn({ onAdd, limitReached }: Props) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const errorId = useId()
 
   function close() {
     setOpen(false)
@@ -42,6 +49,16 @@ export function AddColumn({ onAdd }: { onAdd: (name: string) => Promise<void> })
     }
   }
 
+  if (limitReached) {
+    return (
+      <div className="add-col">
+        <button type="button" disabled>
+          + 列を追加
+        </button>
+        <p className="hint">列は最大{COLUMN_LIMIT}列までのため、追加できません</p>
+      </div>
+    )
+  }
   if (!open) {
     return (
       <button type="button" className="add-col" onClick={() => setOpen(true)}>
@@ -50,24 +67,25 @@ export function AddColumn({ onAdd }: { onAdd: (name: string) => Promise<void> })
     )
   }
   return (
-    <form className="add-col add-col-form" onSubmit={(e) => void submit(e)}>
+    <form className="add-col add-col-form" onSubmit={(e) => void submit(e)} noValidate>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        maxLength={COLUMN_NAME_MAX}
         placeholder="列名"
         aria-label="列名"
+        aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
         autoFocus
         onKeyDown={(e) => e.key === 'Escape' && close()}
       />
       {error && (
-        <p className="error" role="alert">
+        <p id={errorId} className="error" role="alert">
           {error}
         </p>
       )}
       <div className="dialog-actions">
         <button type="submit" className="primary" disabled={busy}>
-          追加
+          保存
         </button>
         <button type="button" onClick={close} disabled={busy}>
           キャンセル
