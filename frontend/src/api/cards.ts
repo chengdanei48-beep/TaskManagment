@@ -1,15 +1,8 @@
 import type { BoardColumn, Card, CardFilter } from '../types'
-
-async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, { signal })
-  if (!res.ok) {
-    throw new Error(`${url} の取得に失敗しました (HTTP ${res.status})`)
-  }
-  return res.json() as Promise<T>
-}
+import { request } from './http'
 
 export function fetchColumns(signal?: AbortSignal): Promise<BoardColumn[]> {
-  return getJson<BoardColumn[]>('/api/columns', signal)
+  return request<BoardColumn[]>('/api/columns', { signal })
 }
 
 export function fetchCards(filter: CardFilter, signal?: AbortSignal): Promise<Card[]> {
@@ -18,5 +11,5 @@ export function fetchCards(filter: CardFilter, signal?: AbortSignal): Promise<Ca
   if (filter.priority) params.set('priority', filter.priority)
   if (filter.keyword) params.set('keyword', filter.keyword)
   const query = params.toString()
-  return getJson<Card[]>(query ? `/api/cards?${query}` : '/api/cards', signal)
+  return request<Card[]>(query ? `/api/cards?${query}` : '/api/cards', { signal })
 }

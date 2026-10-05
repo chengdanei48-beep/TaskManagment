@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchCards, fetchColumns } from '../api/cards'
+import { ApiError } from '../api/http'
+import { useAuth } from '../auth/AuthContext'
 import { Column } from '../components/Column'
 import { SearchBar, type SearchState } from '../components/SearchBar'
 import type { BoardColumn, Card } from '../types'
@@ -26,6 +28,7 @@ function errorMessage(e: unknown): string {
 }
 
 export function BoardPage() {
+  const { user, logout, expire } = useAuth()
   const [search, setSearch] = useState<SearchState>({ keyword: '', priority: '', columnId: '' })
   const [columns, setColumns] = useState<BoardColumn[]>([])
   const [columnsError, setColumnsError] = useState<string | null>(null)
@@ -41,10 +44,13 @@ export function BoardPage() {
     fetchColumns(controller.signal)
       .then(setColumns)
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setColumnsError(errorMessage(e))
+        if (controller.signal.aborted) return
+        // セッション切れならログイン画面へ戻す
+        if (e instanceof ApiError && e.status === 401) expire()
+        else setColumnsError(errorMessage(e))
       })
     return () => controller.abort()
-  }, [])
+  }, [expire])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -58,10 +64,12 @@ export function BoardPage() {
     )
       .then((cards) => setResult({ key, cards, error: null }))
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setResult({ key, cards: [], error: errorMessage(e) })
+        if (controller.signal.aborted) return
+        if (e instanceof ApiError && e.status === 401) expire()
+        else setResult({ key, cards: [], error: errorMessage(e) })
       })
     return () => controller.abort()
-  }, [key, debouncedKeyword, priority, columnId])
+  }, [key, debouncedKeyword, priority, columnId, expire])
 
   const loading = result?.key !== key
   const error = columnsError ?? result?.error ?? null
@@ -79,7 +87,15 @@ export function BoardPage() {
 
   return (
     <main className="page">
-      <h1>ボード</h1>
+      <header className="page-head">
+        <h1>ボード</h1>
+        <div className="user-menu">
+          <span>{user?.username}</span>
+          <button type="button" onClick={() => void logout()}>
+            ログアウト
+          </button>
+        </div>
+      </header>
       <SearchBar value={search} columns={columns} onChange={setSearch} />
       {error && (
         <p className="error" role="alert">
