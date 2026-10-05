@@ -119,6 +119,8 @@ cd frontend && npm run build     # 型チェック + ビルド
 | GET / POST | `/api/cards` | カードの一覧 / 追加 |
 | GET / PUT / DELETE | `/api/cards/{id}` | カードの取得 / 更新 / 削除 |
 | PUT | `/api/cards/{id}/move` | カードの移動 |
+| GET / POST | `/api/labels` | ラベルの一覧 / 登録 |
+| DELETE | `/api/labels/{id}` | ラベルの削除 |
 | GET | `/api/health` | ヘルスチェック |
 
 ## jar にまとめて起動する(配布・利用時)
