@@ -82,6 +82,21 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- ./mvnw spring-boot:run(開発)では dev プロファイルを有効にし、seedデータを投入する。jarの通常起動には影響しない -->
+					<profiles>
+						<profile>dev</profile>
+					</profiles>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- テストは開発用DB(seedあり)を前提にしているため dev プロファイルで実行する -->
+					<systemPropertyVariables>
+						<spring.profiles.active>dev</spring.profiles.active>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
