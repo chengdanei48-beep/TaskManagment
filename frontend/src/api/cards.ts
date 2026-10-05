@@ -25,3 +25,11 @@ export function updateCard(id: number, input: CardInput): Promise<Card> {
 export function deleteCard(id: number): Promise<void> {
   return request<void>(`/api/cards/${id}`, { method: 'DELETE' })
 }
+
+/** カードを columnId の列へ移す。beforeCardId のカードの手前に入れ、null なら末尾に置く。 */
+export function moveCard(id: number, columnId: number, beforeCardId: number | null): Promise<void> {
+  return request<void>(`/api/cards/${id}/move`, {
+    method: 'PUT',
+    body: { columnId, beforeCardId },
+  })
+}

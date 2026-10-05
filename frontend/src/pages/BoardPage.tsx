@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createCard, deleteCard, fetchCards, fetchColumns, updateCard } from '../api/cards'
+import {
+  createCard,
+  deleteCard,
+  fetchCards,
+  fetchColumns,
+  moveCard,
+  updateCard,
+} from '../api/cards'
 import { ApiError } from '../api/http'
 import { useAuth } from '../auth/AuthContext'
 import { CardDialog, type DialogTarget } from '../components/CardDialog'
@@ -8,6 +15,12 @@ import { SearchBar, type SearchState } from '../components/SearchBar'
 import type { BoardColumn, Card } from '../types'
 
 const DEBOUNCE_MS = 300
+
+interface DropTarget {
+  columnId: number
+  /** この手前に挿入する。null は列の末尾 */
+  beforeCardId: number | null
+}
 
 interface CardsResult {
   key: string
@@ -37,6 +50,9 @@ export function BoardPage() {
   const [dialog, setDialog] = useState<DialogTarget | null>(null)
   // カードの追加・編集・削除のたびに増やし、現在の検索条件のまま一覧を取り直す
   const [reload, setReload] = useState(0)
+  const [draggingCardId, setDraggingCardId] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const [moveError, setMoveError] = useState<string | null>(null)
 
   const debouncedKeyword = useDebounced(search.keyword.trim(), DEBOUNCE_MS)
   const { priority, columnId } = search
@@ -101,6 +117,43 @@ export function BoardPage() {
     return map
   }, [result])
 
+  // 元の位置と変わらないドロップは、位置表示も保存もしない
+  function isNoop(target: DropTarget): boolean {
+    const list = cardsByColumn.get(target.columnId) ?? []
+    const index = list.findIndex((c) => c.id === draggingCardId)
+    return index >= 0 && (list[index + 1]?.id ?? null) === target.beforeCardId
+  }
+  const effectiveDrop = draggingCardId !== null && dropTarget && !isNoop(dropTarget) ? dropTarget : null
+
+  function handleDragOverPosition(targetColumnId: number, beforeCardId: number | null) {
+    // dragover は高頻度で発火するため、位置が変わったときだけ更新する
+    setDropTarget((prev) =>
+      prev && prev.columnId === targetColumnId && prev.beforeCardId === beforeCardId
+        ? prev
+        : { columnId: targetColumnId, beforeCardId },
+    )
+  }
+
+  function endDrag() {
+    setDraggingCardId(null)
+    setDropTarget(null)
+  }
+
+  async function handleDrop() {
+    const cardId = draggingCardId
+    const target = effectiveDrop
+    endDrag()
+    if (cardId === null || !target) return
+    setMoveError(null)
+    try {
+      await mutate(() => moveCard(cardId, target.columnId, target.beforeCardId))
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) {
+        setMoveError('カードを移動できませんでした。画面を更新してもう一度お試しください')
+      }
+    }
+  }
+
   return (
     <main className="page">
       <header className="page-head">
@@ -118,6 +171,11 @@ export function BoardPage() {
           {error}
         </p>
       )}
+      {moveError && (
+        <p className="error" role="alert">
+          {moveError}
+        </p>
+      )}
       {loading && !error && <p className="status">読み込み中...</p>}
       <div className="board">
         {columns.map((column) => (
@@ -127,6 +185,16 @@ export function BoardPage() {
             cards={cardsByColumn.get(column.id) ?? []}
             onAdd={(c) => setDialog({ mode: 'create', columnId: c.id, columnName: c.name })}
             onEdit={(card) => setDialog({ mode: 'edit', card })}
+            draggingCardId={draggingCardId}
+            dropBefore={effectiveDrop?.columnId === column.id ? effectiveDrop.beforeCardId : undefined}
+            onDragStart={(cardId) => {
+              setMoveError(null)
+              setDraggingCardId(cardId)
+            }}
+            onDragEnd={endDrag}
+            onDragOverPosition={handleDragOverPosition}
+            onDragLeaveColumn={() => setDropTarget(null)}
+            onDrop={() => void handleDrop()}
           />
         ))}
       </div>
