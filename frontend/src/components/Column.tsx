@@ -3,7 +3,15 @@ import { Card } from './Card'
 
 const DONE_COLUMN_NAME = '完了'
 
-export function Column({ column, cards }: { column: BoardColumn; cards: CardData[] }) {
+interface Props {
+  column: BoardColumn
+  cards: CardData[]
+  onAdd: (column: BoardColumn) => void
+  onEdit: (card: CardData) => void
+}
+
+export function Column({ column, cards, onAdd, onEdit }: Props) {
+  const done = column.name === DONE_COLUMN_NAME
   return (
     <section className="column">
       <h2 className="col-head">
@@ -12,8 +20,11 @@ export function Column({ column, cards }: { column: BoardColumn; cards: CardData
       {cards.length === 0 ? (
         <p className="empty">カードなし</p>
       ) : (
-        cards.map((card) => <Card key={card.id} card={card} done={column.name === DONE_COLUMN_NAME} />)
+        cards.map((card) => <Card key={card.id} card={card} done={done} onClick={() => onEdit(card)} />)
       )}
+      <button type="button" className="btn-add" onClick={() => onAdd(column)}>
+        + タスク追加
+      </button>
     </section>
   )
 }

@@ -27,3 +27,12 @@ export interface CardFilter {
   priority?: Priority
   keyword?: string
 }
+
+/** カードの作成・更新で送る入力値。columnId は作成時のみ使う。 */
+export interface CardInput {
+  columnId?: number
+  title: string
+  description: string | null
+  dueDate: string | null
+  priority: Priority | null
+}

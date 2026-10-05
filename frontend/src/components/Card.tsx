@@ -14,10 +14,29 @@ function todayString(): string {
 }
 
 // 「完了」列のカードは期限を過ぎていても強調しない (要件 D-3)
-export function Card({ card, done }: { card: CardData; done: boolean }) {
+export function Card({
+  card,
+  done,
+  onClick,
+}: {
+  card: CardData
+  done: boolean
+  onClick: () => void
+}) {
   const overdue = !done && card.dueDate !== null && card.dueDate < todayString()
   return (
-    <div className={overdue ? 'card overdue' : 'card'}>
+    <div
+      className={overdue ? 'card overdue' : 'card'}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+    >
       <div className="card-title">{card.title}</div>
       <div className="meta">
         {card.priority && (

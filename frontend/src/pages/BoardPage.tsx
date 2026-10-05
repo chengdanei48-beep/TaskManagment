@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchCards, fetchColumns } from '../api/cards'
+import { createCard, deleteCard, fetchCards, fetchColumns, updateCard } from '../api/cards'
 import { ApiError } from '../api/http'
 import { useAuth } from '../auth/AuthContext'
+import { CardDialog, type DialogTarget } from '../components/CardDialog'
 import { Column } from '../components/Column'
 import { SearchBar, type SearchState } from '../components/SearchBar'
 import type { BoardColumn, Card } from '../types'
@@ -33,11 +34,14 @@ export function BoardPage() {
   const [columns, setColumns] = useState<BoardColumn[]>([])
   const [columnsError, setColumnsError] = useState<string | null>(null)
   const [result, setResult] = useState<CardsResult | null>(null)
+  const [dialog, setDialog] = useState<DialogTarget | null>(null)
+  // カードの追加・編集・削除のたびに増やし、現在の検索条件のまま一覧を取り直す
+  const [reload, setReload] = useState(0)
 
   const debouncedKeyword = useDebounced(search.keyword.trim(), DEBOUNCE_MS)
   const { priority, columnId } = search
   // 取得結果がどの検索条件のものかを保持し、現在の条件と違えば「読み込み中」とみなす
-  const key = JSON.stringify([debouncedKeyword, priority, columnId])
+  const key = JSON.stringify([debouncedKeyword, priority, columnId, reload])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -70,6 +74,18 @@ export function BoardPage() {
       })
     return () => controller.abort()
   }, [key, debouncedKeyword, priority, columnId, expire])
+
+  // 更新系の操作。セッション切れ(401)ならログイン画面へ戻し、エラーはダイアログ側で表示する
+  async function mutate(action: () => Promise<unknown>) {
+    try {
+      await action()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) expire()
+      throw e
+    }
+    setDialog(null)
+    setReload((n) => n + 1)
+  }
 
   const loading = result?.key !== key
   const error = columnsError ?? result?.error ?? null
@@ -105,9 +121,31 @@ export function BoardPage() {
       {loading && !error && <p className="status">読み込み中...</p>}
       <div className="board">
         {columns.map((column) => (
-          <Column key={column.id} column={column} cards={cardsByColumn.get(column.id) ?? []} />
+          <Column
+            key={column.id}
+            column={column}
+            cards={cardsByColumn.get(column.id) ?? []}
+            onAdd={(c) => setDialog({ mode: 'create', columnId: c.id, columnName: c.name })}
+            onEdit={(card) => setDialog({ mode: 'edit', card })}
+          />
         ))}
       </div>
+      {dialog && (
+        <CardDialog
+          // 対象が変わったら入力欄を初期化する
+          key={dialog.mode === 'edit' ? `edit-${dialog.card.id}` : `create-${dialog.columnId}`}
+          target={dialog}
+          onClose={() => setDialog(null)}
+          onSave={(input) =>
+            mutate(() =>
+              dialog.mode === 'edit' ? updateCard(dialog.card.id, input) : createCard(input),
+            )
+          }
+          onDelete={
+            dialog.mode === 'edit' ? () => mutate(() => deleteCard(dialog.card.id)) : undefined
+          }
+        />
+      )}
     </main>
   )
 }
