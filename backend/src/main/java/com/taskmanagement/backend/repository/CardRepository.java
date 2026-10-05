@@ -27,4 +27,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
             @Param("keyword") String keyword);
 
     Optional<Card> findByIdAndColumnUserId(Long id, Long userId);
+
+    @Query("SELECT COALESCE(MAX(c.position), -1) FROM Card c WHERE c.column.id = :columnId")
+    int maxPositionInColumn(@Param("columnId") Long columnId);
 }
