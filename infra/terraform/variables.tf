@@ -34,6 +34,12 @@ variable "allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "tls_internal" {
+  description = "true にすると Caddy が自己署名証明書を使う。allowed_cidrs で接続元を絞ると公開証明書(Let's Encrypt)を取得できないため、その場合に true にする。ブラウザに警告が出る"
+  type        = bool
+  default     = false
+}
+
 variable "budget_email" {
   description = "予算超過の通知先メールアドレス"
   type        = string

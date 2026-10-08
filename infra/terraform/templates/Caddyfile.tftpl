@@ -1,0 +1,9 @@
+# サーバー上の /opt/app/Caddyfile になる(Terraform の templatefile で生成)。
+# {$APP_HOST} は Caddy が読む環境変数。ホスト名を書くだけで HTTPS になる。
+{$APP_HOST} {
+%{ if tls_internal ~}
+	# 接続元をIP制限しているとき用: Caddy 自身が自己署名証明書を発行する(ブラウザに警告が出る)
+	tls internal
+%{ endif ~}
+	reverse_proxy app:8080
+}

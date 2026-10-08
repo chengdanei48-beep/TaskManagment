@@ -3,6 +3,11 @@ output "app_url" {
   value       = "https://${local.app_host}"
 }
 
+output "tls_internal" {
+  description = "自己署名証明書を使っているか(deploy.ps1 のヘルスチェックが参照する)"
+  value       = var.tls_internal
+}
+
 output "public_ip" {
   description = "サーバーの公開IP(Elastic IP)"
   value       = aws_eip.app.public_ip

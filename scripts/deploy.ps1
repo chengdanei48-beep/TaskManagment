@@ -97,6 +97,13 @@ try {
 # --- 4. ヘルスチェック ---
 Write-Host '== 4/4 ヘルスチェック ==' -ForegroundColor Cyan
 $healthUrl = "$appUrl/api/health"
+# Windows PowerShell 5.1 は既定で古い TLS を使うことがあるため TLS 1.2 を指定する
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+if ($out.tls_internal.value) {
+  # 自己署名証明書のため、このスクリプト内のヘルスチェックに限り証明書の検証を省略する
+  Add-Type -TypeDefinition 'using System.Net; using System.Security.Cryptography.X509Certificates; public class TrustAll : ICertificatePolicy { public bool CheckValidationResult(ServicePoint s, X509Certificate c, WebRequest r, int p) { return true; } }'
+  [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAll
+}
 $ok = $false
 for ($i = 1; $i -le 40; $i++) {
   try {

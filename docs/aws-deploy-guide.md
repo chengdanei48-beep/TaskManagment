@@ -57,7 +57,10 @@ AWS 上の **EC2(仮想サーバー)1台** に、Docker Compose で3つのコン
 
 - **サーバーは1台だけ**。このアプリはログイン状態(セッション)をサーバーのメモリに持つため、複数台にするとログインが共有されません。
 - DB は同じサーバーの中です。サーバーのディスクが壊れるとデータも失われます(バックアップは対象外。要件定義書 10章と同じ前提)。
-- 公開URLは **インターネットから誰でも開けます**。ログイン画面があるだけなので、不特定多数に使わせたくない場合は、セキュリティグループで自分のIPだけに絞ることもできます(AI に「自宅IPだけ許可して」と頼めます)。
+- 既定では、公開URLは **インターネットから誰でも開けます**。不特定多数に使わせたくない場合は、`terraform.tfvars` の `allowed_cidrs` で自分のIPだけに絞れます。
+  - 自分のIPは、`curl https://checkip.amazonaws.com` で調べます(インターネットから見えるIPです)。
+  - **絞ると公開証明書(Let's Encrypt)が取れなくなる**ので、`tls_internal = true` も指定します。Caddy が自己署名証明書を発行し、通信は暗号化されますが、**ブラウザに「安全ではありません」と警告が出ます**(「詳細設定」→「進む」で開けます)。
+  - 家庭用回線ではIPが変わることがあります。入れなくなったら、`allowed_cidrs` を新しいIPに直して `terraform apply` します。
 
 ---
 
@@ -300,7 +303,7 @@ $env:AWS_PROFILE = "taskmgmt"
 | `ssm.tf` | DB パスワードを自動生成して SecureString で保管 |
 | `budget.tf` | $1 を超えそうならメール通知 |
 | `outputs.tf` | 公開URL、インスタンスID、バケット名を表示 |
-| `templates/` | サーバー上に置く `docker-compose.yml`・`Caddyfile` と、初回起動時の初期設定スクリプト `user_data.sh.tftpl` |
+| `templates/` | サーバー上に置く `docker-compose.yml`・`Caddyfile.tftpl`(`tls_internal` で自己署名証明書に切り替え)と、初回起動時の初期設定スクリプト `user_data.sh.tftpl` |
 
 > `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。DB のデータが消えるのを防ぐためです。`templates/` を変えても既存のサーバーには反映されません。
 
@@ -437,7 +440,8 @@ docker compose logs --tail 100 を確認し、原因を教えてください。
 | `InvalidParameterCombination` / インスタンスタイプが使えない | Free プランの対象外のサイズ。`t3.micro` か、その時点で案内されている対象サイズに変える(AWS の無料枠案内を確認) |
 | `terraform apply` が権限エラー | アクセス許可セットの権限不足(4章)。IAM の作成権限が必要 |
 | Budgets の作成でエラー | アカウントで請求情報へのアクセスが有効か確認 |
-| `https://...` が開かない(証明書エラー) | 起動直後は証明書の取得に数分かかる。続く場合は Caddy のログを確認。Let's Encrypt は同じホスト名の再取得に回数制限あり |
+| `https://...` が開かない(証明書エラー) | 起動直後は証明書の取得に数分かかる。続く場合は Caddy のログを確認。Let's Encrypt は同じホスト名の再取得に回数制限あり。`allowed_cidrs` で接続元を絞っているのに `tls_internal = true` でないと、証明書を取得できず HTTPS になりません |
+| 警告「この接続ではプライバシーが保護されません」 | `tls_internal = true`(自己署名証明書)のとき正常。「詳細設定」→「進む」で開く |
 | 画面は出るがログインできない | Cookie の Secure 設定と HTTPS の認識を確認(`SERVER_FORWARD_HEADERS_STRATEGY`)。`http://` ではなく `https://` で開く |
 | アプリが起動しない | SSM でサーバーに入り `docker compose logs app` を確認。DB 接続エラーなら環境変数を確認 |
 
