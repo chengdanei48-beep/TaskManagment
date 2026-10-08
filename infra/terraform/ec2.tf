@@ -45,7 +45,7 @@ resource "aws_instance" "app" {
     db_user        = var.db_user
     db_password_id = aws_ssm_parameter.db_password.name
     compose_yml    = file("${path.module}/templates/docker-compose.yml")
-    caddyfile      = file("${path.module}/templates/Caddyfile")
+    caddyfile      = templatefile("${path.module}/templates/Caddyfile.tftpl", { tls_internal = var.tls_internal })
   })
 
   lifecycle {

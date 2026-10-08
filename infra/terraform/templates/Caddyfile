@@ -1,5 +1,0 @@
-# サーバー上の /opt/app/Caddyfile になる。
-# {$APP_HOST} は環境変数。ホスト名を書くだけで Let's Encrypt の証明書を自動取得・更新し、HTTPS にする。
-{$APP_HOST} {
-	reverse_proxy app:8080
-}
