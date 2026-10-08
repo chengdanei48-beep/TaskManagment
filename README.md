@@ -61,6 +61,7 @@ TaskManagment/
 | [docs/diagrams.md](docs/diagrams.md) | 画面遷移図・データフロー・ER図(Mermaid) |
 | [docs/screen-design.html](docs/screen-design.html) | 画面イメージ(ブラウザで開く) |
 | [SETUP.md](SETUP.md) | 利用者向けセットアップ手順(JDK・PostgreSQL の導入、jar の起動) |
+| [docs/aws-deploy-guide.md](docs/aws-deploy-guide.md) | AWSへのデプロイガイド(AWS CLI + Terraform。初学者向けの解説・認証設定・AIへの依頼方法) |
 | [CLAUDE.md](CLAUDE.md) | 開発フロー・ポート規約などの開発ルール |
 | [docs/claude-code-slash-commands.md](docs/claude-code-slash-commands.md) | Claude Code のスラッシュコマンド一覧 |
 
