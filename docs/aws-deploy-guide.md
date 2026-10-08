@@ -4,8 +4,8 @@ TaskManagement を **AWS のマネジメントコンソールを手で操作せ�
 
 > **このガイドの位置づけ**
 > - 解説と手順(このファイル): Issue #61
-> - Terraform コード・Dockerfile・デプロイスクリプト: Issue #62(`infra/terraform/`、`Dockerfile`、`scripts/deploy.ps1`)
-> - 6章以降の手順は、#62 が取り込まれてから実行できます。
+> - Terraform コード・デプロイスクリプト: Issue #62(`infra/terraform/`、`scripts/deploy.ps1`)
+> - アプリは Dockerfile でイメージを作らず、公式の Java イメージ(`eclipse-temurin:25-jre`)に jar を渡して動かします。そのため Dockerfile とイメージの保管場所(ECR)は不要です。
 
 ## 目次
 
@@ -300,7 +300,9 @@ $env:AWS_PROFILE = "taskmgmt"
 | `ssm.tf` | DB パスワードを自動生成して SecureString で保管 |
 | `budget.tf` | $1 を超えそうならメール通知 |
 | `outputs.tf` | 公開URL、インスタンスID、バケット名を表示 |
-| `templates/` | サーバー上に置く `docker-compose.yml` と `Caddyfile` のひな形 |
+| `templates/` | サーバー上に置く `docker-compose.yml`・`Caddyfile` と、初回起動時の初期設定スクリプト `user_data.sh.tftpl` |
+
+> `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。DB のデータが消えるのを防ぐためです。`templates/` を変えても既存のサーバーには反映されません。
 
 ### アプリを AWS で動かすための設定(環境変数)
 
