@@ -1,2 +1,10 @@
 # Environment variables
 .env
+
+# Terraform(state は秘密情報を含むため Git に入れない。.terraform.lock.hcl はコミットする)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+tfplan
+crash.log
