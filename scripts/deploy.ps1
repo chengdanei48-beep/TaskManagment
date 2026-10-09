@@ -67,8 +67,22 @@ Invoke-Native 'aws' @('s3', 'cp', $jar, "s3://$bucket/app.jar", '--profile', $Pr
 
 # --- 3. サーバーへ指示(SSM Run Command) ---
 Write-Host '== 3/4 サーバーを更新 ==' -ForegroundColor Cyan
+# 作った直後は SSM が Online になるまで時間がかかる
+$online = $false
+for ($i = 1; $i -le 30; $i++) {
+  $ping = aws ssm describe-instance-information `
+    --filters "Key=InstanceIds,Values=$instanceId" `
+    --query 'InstanceInformationList[0].PingStatus' --output text --profile $Profile
+  if ($ping -eq 'Online') { $online = $true; break }
+  Write-Host "  SSM の接続待ち($i/30): $ping"
+  Start-Sleep -Seconds 10
+}
+if (-not $online) { throw 'SSM が Online になりません。docs/aws-deploy-guide.md の「SSM が Online にならないとき」を確認してください。' }
+
 $commands = @(
   'set -e',
+  # 作った直後は初期設定(Docker・設定ファイルの作成)の途中なので、終わるまで待つ(最大5分)
+  'timeout 300 cloud-init status --wait || true',
   "aws s3 cp s3://$bucket/app.jar /opt/app/app.jar",
   'cd /opt/app',
   'docker compose up -d --force-recreate app'
@@ -84,12 +98,22 @@ try {
     --query 'Command.CommandId' --output text --profile $Profile
   if ($LASTEXITCODE -ne 0) { throw 'aws ssm send-command が失敗しました。' }
 
-  # 指示が終わるまで待つ(失敗なら例外)
-  aws ssm wait command-executed --command-id $commandId --instance-id $instanceId --profile $Profile
-  if ($LASTEXITCODE -ne 0) {
+  # 指示が終わるまで待つ(最大10分。`aws ssm wait` は約100秒で打ち切られるため、自分で確認する)
+  $status = ''
+  # 送信直後は「指示がまだ無い」エラーが stderr に出ることがある。Windows PowerShell 5.1 では
+  # Stop のままだとそれが例外になるため、確認ループの中だけ Continue にする
+  $ErrorActionPreference = 'Continue'
+  for ($i = 1; $i -le 120; $i++) {
+    $status = aws ssm get-command-invocation --command-id $commandId --instance-id $instanceId `
+      --query 'Status' --output text --profile $Profile 2>$null
+    if ($status -notin @('Pending', 'InProgress', 'Delayed', '')) { break }
+    Start-Sleep -Seconds 5
+  }
+  $ErrorActionPreference = 'Stop'
+  if ($status -ne 'Success') {
     aws ssm get-command-invocation --command-id $commandId --instance-id $instanceId `
       --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' --profile $Profile
-    throw 'サーバー上の更新に失敗しました。上の出力を確認してください。'
+    throw "サーバー上の更新に失敗しました(状態: $status)。上の出力を確認してください。"
   }
 } finally {
   Remove-Item -Path $paramFile -ErrorAction SilentlyContinue

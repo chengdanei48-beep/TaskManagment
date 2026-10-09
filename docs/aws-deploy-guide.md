@@ -24,21 +24,20 @@ TaskManagement を **AWS のマネジメントコンソールを手で操作せ�
 
 ## 1. このガイドで作るもの(全体像)
 
-AWS 上の **EC2(仮想サーバー)1台** に、Docker Compose で3つのコンテナを動かします。
+AWS 上の **EC2(仮想サーバー)1台** に Docker Compose で2つのコンテナを動かし、DB は **RDS(マネージドの PostgreSQL)** を使います。
 
 ```
 インターネット
     │ https://<固定IP>.sslip.io
     ▼
-┌─────────────── EC2 (1台) ────────────────┐
-│  caddy  ──▶  app (Spring Boot + 画面)     │
-│  (HTTPS)       │                          │
-│                ▼                          │
-│              db (PostgreSQL 17)           │
-│              └ データはディスク(EBS)に保存 │
-└──────────────────────────────────────────┘
+┌──────── EC2 (1台) ────────┐        ┌─── RDS (PostgreSQL 17) ───┐
+│  caddy  ──▶  app          │  5432  │  データはここに保存        │
+│  (HTTPS)   (Spring Boot   │ ─────▶ │  EC2 のSGからだけ接続可    │
+│             + 画面)       │  (SSL) │  インターネットから不可    │
+└───────────────────────────┘        └───────────────────────────┘
   ・操作用の入口は SSM Session Manager(SSH 不使用)
   ・jar の受け渡しは S3 バケット経由
+  ・DB パスワードは Terraform が生成し、SSM Parameter Store に保管
 ```
 
 | 部品 | 役割 |
@@ -47,19 +46,20 @@ AWS 上の **EC2(仮想サーバー)1台** に、Docker Compose で3つのコン
 | Elastic IP | 変わらない公開IPアドレス |
 | Caddy | HTTPS(鍵マーク)にする係。証明書は Let's Encrypt から自動取得 |
 | `<IP>.sslip.io` | IPアドレスをそのままホスト名にしてくれる無料サービス。独自ドメインが不要 |
+| RDS | DB(PostgreSQL)。VPC の中だけに置き、EC2 からだけ接続できる。最小クラス・Multi-AZ なし・バックアップなし |
 | S3 | ビルドした jar を一時的に置く場所 |
 | SSM | サーバーへ安全にコマンドを送る仕組み。パスワード(DB)の保管にも使う |
 | Budgets | 使いすぎたらメールで知らせる |
 
-**あえて使わないもの**: ALB(ロードバランサー)、NAT Gateway、RDS、Fargate。いずれも **常時課金** で、無料枠のクレジットを速く減らすためです。発展課題として [10章](#10-発展課題) に載せています。
+**あえて使わないもの**: ALB(ロードバランサー)、NAT Gateway、Fargate。いずれも **常時課金** で、無料枠のクレジットを速く減らすためです。発展課題として [10章](#10-発展課題) に載せています。RDS は常時課金ですが、DB の運用を AWS に任せられるため使い、**使うときだけ作って、終わったら消します**(7.6)。
 
 ### 制約(知っておくこと)
 
 - **サーバーは1台だけ**。このアプリはログイン状態(セッション)をサーバーのメモリに持つため、複数台にするとログインが共有されません。
-- DB は同じサーバーの中です。サーバーのディスクが壊れるとデータも失われます(バックアップは対象外。要件定義書 10章と同じ前提)。
+- DB は RDS です。ただし **バックアップ(自動バックアップ・スナップショット)は取らない設定** で、`destroy` するとデータは完全に消えます(要件定義書 10章と同じ前提。6章の方針)。
 - 既定では、公開URLは **インターネットから誰でも開けます**。不特定多数に使わせたくない場合は、`terraform.tfvars` の `allowed_cidrs` で自分のIPだけに絞れます。
   - 自分のIPは、`curl https://checkip.amazonaws.com` で調べます(インターネットから見えるIPです)。
-  - **絞ると公開証明書(Let's Encrypt)が取れなくなる**ので、`tls_internal = true` も指定します。Caddy が自己署名証明書を発行し、通信は暗号化されますが、**ブラウザに「安全ではありません」と警告が出ます**(「詳細設定」→「進む」で開けます)。
+  - **絞ると公開証明書(Let's Encrypt)が取れなくなる**ので、`allowed_cidrs` に `0.0.0.0/0` を含まないときは、自動で自己署名証明書(`tls_internal`)になります。通信は暗号化されますが、**ブラウザに「安全ではありません」と警告が出ます**(「詳細設定」→「進む」で開けます)。
   - 家庭用回線ではIPが変わることがあります。入れなくなったら、`allowed_cidrs` を新しいIPに直して `terraform apply` します。
 
 ---
@@ -90,16 +90,18 @@ AWS 上の **EC2(仮想サーバー)1台** に、Docker Compose で3つのコン
 | EC2 t3.micro(東京) | 約 $10 |
 | 公開IPv4アドレス(Elastic IP) | 約 $3.6 |
 | EBS(ディスク 20GB) | 約 $2 |
-| 合計 | **約 $15 / 月** |
+| RDS db.t4g.micro(東京) | 約 $19 |
+| RDS ストレージ(gp3 20GB) | 約 $3 |
+| 合計 | **約 $38 / 月**(出しっぱなしにした場合) |
 
-数字は目安です。正確な料金は [AWS 料金計算ツール](https://calculator.aws/) で確認してください。
+数字は目安です。**使うときだけ作る運用(7.6)なら、稼働した時間の分だけです**(例: 3時間なら、RDS・EC2 などを合わせて数十円〜100円程度)。正確な料金は [AWS 料金計算ツール](https://calculator.aws/) で確認してください。
 
 ### 課金事故を避けるチェックリスト
 
 - [ ] アカウントプランが **Free プラン** になっている(4章で確認)
 - [ ] Budgets(予算アラート)を設定した(Terraform で作成)
 - [ ] 使わない間は `terraform destroy` で全部消す(7章)
-- [ ] 高額になりやすいもの(NAT Gateway、ALB、RDS、大きなEC2)を **勝手に追加させない**(8章のルール)
+- [ ] 高額になりやすいもの(NAT Gateway、ALB、大きなEC2、RDS の大きなクラスや Multi-AZ)を **勝手に追加させない**(8章のルール)
 - [ ] 月に一度、コンソールの「請求とコスト管理」で金額を見る(閲覧だけならコンソールで構いません)
 
 ---
@@ -120,7 +122,8 @@ Amazon が提供する「インターネット越しに借りられるコンピ�
 | サブネット | VPC を区切った一区画 | デフォルトのものを使う |
 | セキュリティグループ(SG) | 通信を許可するルール(ファイアウォール) | 80番・443番だけ許可 |
 | EC2 | 仮想サーバー | アプリを動かす1台 |
-| EBS | EC2 に付けるディスク | DB のデータを保存 |
+| EBS | EC2 に付けるディスク | OS と Docker の領域 |
+| RDS | マネージドのデータベース | PostgreSQL。データはここに保存 |
 | Elastic IP | 変わらない固定の公開IP | `https://<IP>.sslip.io` の元 |
 | S3 | ファイル置き場 | jar を置く |
 | IAM | 「誰が何をしていいか」の権限管理 | 人(ユーザー)と、サーバー用の役割(ロール) |
@@ -291,10 +294,10 @@ $env:AWS_PROFILE = "taskmgmt"
 > | 段階 | 作るもの | 確認すること | 状態 |
 > |---|---|---|---|
 > | 1 | EC2(サーバー)、固定IP、セキュリティグループ、IAM(SSM 接続のみ)、予算アラート | SSM で入れる、Docker が動く、swap がある、外から80番に届く | 完了 |
-> | 2 | RDS(PostgreSQL)、DB パスワードの保管(SSM Parameter Store) | EC2 から RDS に接続できる(`scripts/check-rds.ps1`) | **現在のコード** |
-> | 3 | アプリのデプロイ(S3、Docker Compose、Caddy、`scripts/deploy.ps1`) | 画面が開き、登録・ログインできる | これから |
+> | 2 | RDS(PostgreSQL)、DB パスワードの保管(SSM Parameter Store) | EC2 から RDS に接続できる(`scripts/check-rds.ps1`) | 完了 |
+> | 3 | アプリのデプロイ(S3、Docker Compose、Caddy、`scripts/deploy.ps1`) | 画面が開き、登録・ログインできる | **現在のコード(完了)** |
 >
-> 段階3で使うコード(S3、docker-compose、Caddy など)は、第1・2段階では外してあります。Git の履歴(PR #64・#66)に残っているので、そこから戻せます。ただし以前の DB は EC2 上の Docker の Postgres で、RDS を使う第3段階では `db` コンテナを外し、接続先を RDS にする必要があります。
+> 第3段階で戻したコード(S3、docker-compose、Caddy など)は、以前(PR #64・#66)は DB が EC2 上の Docker の Postgres でした。今は `db` コンテナを外し、接続先を RDS にしています。
 
 **第2段階(RDS)の設計方針:** 毎回作り直す運用で、データは残さない前提です。
 
@@ -307,7 +310,7 @@ $env:AWS_PROFILE = "taskmgmt"
 | サブネットグループ | デフォルトVPCの既存サブネット(複数AZ)を束ねる。サブネットは新規作成しない | RDS は2つ以上のAZのサブネットが必須で、デフォルトVPCには既に各AZにある |
 | 初期データ | 作り直すたびに空 | Flyway がアプリ起動時にテーブルを作る。シードデータ(`db/seed`)は本番では入らない |
 
-`infra/terraform/` の構成(第2段階):
+`infra/terraform/` の構成(第3段階):
 
 | ファイル | 内容 |
 |---|---|
@@ -316,15 +319,20 @@ $env:AWS_PROFILE = "taskmgmt"
 | `variables.tf` | 外から渡す設定(メールアドレス等)の定義 |
 | `terraform.tfvars.example` | 設定値のひな形。コピーして `terraform.tfvars` を作る(実ファイルは Git 管理外) |
 | `network.tf` | デフォルトVPCの参照、セキュリティグループ(80/443を指定した接続元だけ許可) |
-| `ec2.tf` | EC2、Elastic IP、ディスク |
-| `iam.tf` | EC2 用の IAM ロール(SSM 接続と、DB パスワードの読み取りだけ許可) |
+| `ec2.tf` | EC2、Elastic IP、ディスク。アプリのURL(`<IP>.sslip.io`)と、自己署名証明書にするかの判定 |
+| `iam.tf` | EC2 用の IAM ロール(SSM 接続と、jar の取得・DB パスワードの読み取りだけ許可) |
+| `s3.tf` | jar の置き場所(S3 バケット。外部公開しない・暗号化) |
 | `rds.tf` | RDS(PostgreSQL)、DB サブネットグループ、DB 用セキュリティグループ(5432 を EC2 からだけ許可) |
 | `ssm.tf` | DB パスワードを自動生成し、SSM Parameter Store(SecureString)に保管 |
 | `budget.tf` | $1 を超えそうならメール通知 |
-| `outputs.tf` | 公開IP、インスタンスID、SSM 接続コマンド、RDS の接続先を表示 |
-| `templates/user_data.sh` | 初回起動時の初期設定(swap と Docker の導入) |
+| `outputs.tf` | アプリのURL、公開IP、インスタンスID、SSM 接続コマンド、RDS の接続先、S3 バケット名を表示 |
+| `templates/user_data.sh.tftpl` | 初回起動時の初期設定(swap、Docker と Compose の導入、設定ファイルと `.env` の作成、caddy の起動) |
+| `templates/docker-compose.yml` | サーバー上の Compose 設定(app と caddy。DB は RDS なのでコンテナなし) |
+| `templates/Caddyfile.tftpl` | Caddy の設定(HTTPS、app への転送。自己署名証明書のときは `tls internal`) |
 
-> `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。のちにデータが入るためです。`templates/` を変えても既存のサーバーには反映されません。
+> `ec2.tf` では、`user_data`(初期設定)の変更を無視する設定にしています。変えるたびにサーバーが作り直されないためです。`templates/` を変えても既存のサーバーには反映されません(作り直す運用なので、次に作るときから反映されます)。
+>
+> `ec2.tf` の `depends_on` は、**ロールにポリシーが付いてからサーバーを起動する**ための順序指定です。これがないと、起動直後に SSM への登録や DB パスワードの取得に失敗することがありました(9章)。さらに `user_data` は、DB パスワードを取得できるまで最大5分リトライします。
 
 ### アプリを AWS で動かすための設定(環境変数)
 
@@ -332,7 +340,7 @@ $env:AWS_PROFILE = "taskmgmt"
 
 | 環境変数 | 値 | 理由 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/taskmanagement` | DB ホストが `localhost` 固定のため、コンテナ名 `db` へ向ける |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<RDS のホスト名>:5432/taskmanagement?sslmode=require` | DB ホストが `localhost` 固定のため RDS へ向ける。RDS は SSL 必須(PostgreSQL 15 以降の既定)なので、暗号化して接続する |
 | `SERVER_ADDRESS` | `0.0.0.0` | 既定の `127.0.0.1` だとコンテナの外から届かない |
 | `SERVER_SERVLET_SESSION_COOKIE_SECURE` | `true` | HTTPS のときだけ Cookie を送る |
 | `SERVER_FORWARD_HEADERS_STRATEGY` | `framework` | Caddy の後ろでも HTTPS だと認識させる |
@@ -346,7 +354,7 @@ $env:AWS_PROFILE = "taskmgmt"
 
 すべて PowerShell(プロジェクトのルートから)で行います。
 
-> 現在のコードは **第2段階(EC2 と RDS)** です。7.1 の構築のあと、7.1b(EC2)と 7.1c(RDS)の動作確認までを行います。7.2 以降(アプリのデプロイ)は、第3段階のコードを戻してから実行します。
+> 現在のコードは **第3段階(EC2・RDS・アプリのデプロイ)** です。7.1 の構築のあと、7.2 でアプリをデプロイします。7.1b(EC2 の確認)は第1段階のコード用の手順です。第3段階のコードでは Caddy が 80 番を使うため、`check-ec2.ps1` は使えません。7.1c(RDS の確認、`check-rds.ps1`)は、第3段階のコードでも使えます。
 
 ### 7.1 初回構築
 
@@ -364,7 +372,7 @@ terraform apply tfplan            # ← 確認後に実行
 `plan` の出力で見るところ:
 
 - 最後の行 `Plan: N to add, 0 to change, 0 to destroy.`(初回は add のみのはず)
-- 作られる資源の種類に、**NAT Gateway・Load Balancer・RDS が含まれていない** こと
+- 作られる資源の種類に、**NAT Gateway・Load Balancer が含まれていない** こと(RDS は `db.t4g.micro` が1つだけ、`multi_az = false`、`skip_final_snapshot = true`)
 - EC2 のインスタンスタイプが `t3.micro` であること
 
 ### 7.1b 第1段階の動作確認(EC2 のみ)
@@ -421,14 +429,18 @@ RDS は VPC の中からだけ届き、このPCからは直接つながりませ
 
 1. `backend` で `./mvnw -Pbundle-frontend package`(画面を同梱した jar を作る)
 2. jar を S3 バケットへ `aws s3 cp`
-3. SSM でサーバーに「jar を取得して再起動」を指示(`aws ssm send-command`)
+3. SSM が Online になるのを待ち、サーバーに「初期設定の完了を待つ → jar を取得 → app を再起動」を指示(`aws ssm send-command`)
 4. `https://<IP>.sslip.io/api/health` が応答するまで待つ
+
+作った直後に実行しても構いません。**RDS の作成(約5分)のあとに EC2 が起動する**ため、`terraform apply` から数分は初期設定の途中です。スクリプトがその完了を待ちます。ヘルスチェックの最初の数回は、アプリの起動待ちで `502` になることがありますが、正常です。
 
 ### 7.3 動作確認
 
-1. `terraform output` で公開URLを確認し、ブラウザで開く
+1. `terraform output` で公開URLを確認し、ブラウザで開く(自己署名証明書のときは、警告で「詳細設定」→「進む」)
 2. 「アカウント登録はこちら」から登録 → ログイン → 列・カードの追加と移動
 3. 失敗したときは9章へ
+
+> 動作確認ずみ: 第3段階を実際に構築し、EC2 から RDS に接続して、登録・ログイン・カード操作ができることを確認しました。その後 `destroy` で全部消し、課金対象が残っていないことも確認しています。
 
 ### 7.4 コードを変えたとき
 
@@ -442,8 +454,18 @@ cd infra\terraform
 terraform destroy
 ```
 
-- **DB のデータも消えます**。必要なら先にバックアップを取ります(AI に「DBをダンプして S3 に置いて」と頼めます)。
-- 終わったら `aws ec2 describe-instances --profile taskmgmt` などで、リソースが残っていないことを確認します。
+- **DB(RDS)のデータも消えます**。スナップショットも残さない設定です。必要なら先にバックアップを取ります(AI に「DBをダンプして S3 に置いて」と頼めます)。
+- 終わったら、リソースが残っていないことを確認します。`aws-down.ps1`(7.6)は、EC2・Elastic IP・セキュリティグループ・RDS・スナップショットを確認します。念のため、次の項目も 0 件であることを確かめます(課金対象です)。
+
+```powershell
+$p = '--profile','taskmgmt','--region','ap-northeast-1'
+aws ec2 describe-volumes @p --query 'Volumes[].VolumeId'                     # EBS
+aws ec2 describe-nat-gateways @p --filter 'Name=state,Values=pending,available'
+aws elbv2 describe-load-balancers @p --query 'LoadBalancers[].LoadBalancerName'
+aws rds describe-db-instances @p --query 'DBInstances[].DBInstanceIdentifier'
+aws rds describe-db-snapshots @p --query 'DBSnapshots[].DBSnapshotIdentifier'
+aws s3api list-buckets --profile taskmgmt --query 'Buckets[].Name'            # S3
+```
 
 ### 7.6 使うときだけ作る運用(費用を抑える)
 
@@ -451,7 +473,7 @@ terraform destroy
 
 ```powershell
 .\scripts\aws-up.ps1      # 使い始め: ログイン確認 → 今のIPを許可 → plan を表示 → yes で apply
-# ... 動作確認や作業(例: .\scripts\check-ec2.ps1)...
+# ... 動作確認や作業(例: .\scripts\deploy.ps1 でアプリをデプロイ)...
 .\scripts\aws-down.ps1    # 使い終わり: 消えるものを表示 → yes で destroy → 消し残しの確認
 ```
 
@@ -466,7 +488,7 @@ terraform destroy
 
 - **作るたびに公開IP(Elastic IP)が変わります。** URL も毎回変わるので、`terraform output` で確認します。
 - **消すとサーバーの中のデータ(DB など)も消えます。** 第2段階以降の RDS も、スナップショットを残さない方針(6章)なので、`destroy` でデータは完全に消えます。残したいデータが出てきたら、`skip_final_snapshot = false` と復元用の設定を足す必要があります。
-- 作ってから使える状態になるまで、数分かかります(初期設定の完了待ち)。`check-ec2.ps1` はその完了を待ちます。
+- 作ってから使える状態になるまで、10分ほどかかります(RDS の作成に約5分、そのあと EC2 の初期設定)。`deploy.ps1` はその完了を待ちます。
 - **消し忘れが最大の費用リスク** です。使い終わったら、必ず `aws-down.ps1` を実行します。AI に作業を頼んだ場合は、「終わったら destroy の plan を出して」と頼みます(8章)。
 
 ---
@@ -526,14 +548,15 @@ docker compose logs --tail 100 を確認し、原因を教えてください。
 |---|---|
 | `The SSO session ... has expired` / `Token has expired` | ログイン切れ。`aws sso login --profile taskmgmt` |
 | `Unable to locate credentials` | プロファイル未指定。`--profile taskmgmt` か `$env:AWS_PROFILE` を設定 |
-| `check-ec2.ps1` が「SSM が Online になりません」で止まる(待機中の表示が `None` のまま) | 作った直後に SSM エージェントが登録に失敗することがある(IAM 権限の反映が間に合わなかったためと考えられる)。**インスタンスを再起動すると、数十秒で Online になる。** 手順は下の「SSM が Online にならないとき」 |
+| `check-ec2.ps1` / `deploy.ps1` が「SSM が Online になりません」で止まる(待機中の表示が `None` のまま) | 作った直後に SSM エージェントが登録に失敗することがある(IAM 権限の反映が間に合わなかったためと考えられる)。第3段階のコードは、ロールのポリシーが付いてからサーバーを起動する(`depends_on`)ので起きにくいはず。起きたら **インスタンスを再起動すると、数十秒で Online になる。** 手順は下の「SSM が Online にならないとき」 |
 | `InvalidParameterCombination` / インスタンスタイプが使えない | Free プランの対象外のサイズ。`t3.micro` か、その時点で案内されている対象サイズに変える(AWS の無料枠案内を確認) |
 | `terraform apply` が権限エラー | アクセス許可セットの権限不足(4章)。IAM の作成権限が必要 |
 | Budgets の作成でエラー | アカウントで請求情報へのアクセスが有効か確認 |
-| `https://...` が開かない(証明書エラー) | 起動直後は証明書の取得に数分かかる。続く場合は Caddy のログを確認。Let's Encrypt は同じホスト名の再取得に回数制限あり。`allowed_cidrs` で接続元を絞っているのに `tls_internal = true` でないと、証明書を取得できず HTTPS になりません |
+| `https://...` が開かない(証明書エラー) | 起動直後は証明書の取得に数分かかる。続く場合は Caddy のログを確認。Let's Encrypt は同じホスト名の再取得に回数制限あり。`allowed_cidrs` で接続元を絞ると、公開証明書を取得できないため、自動で自己署名証明書(`tls_internal`)になります |
 | 警告「この接続ではプライバシーが保護されません」 | `tls_internal = true`(自己署名証明書)のとき正常。「詳細設定」→「進む」で開く |
 | 画面は出るがログインできない | Cookie の Secure 設定と HTTPS の認識を確認(`SERVER_FORWARD_HEADERS_STRATEGY`)。`http://` ではなく `https://` で開く |
-| アプリが起動しない | SSM でサーバーに入り `docker compose logs app` を確認。DB 接続エラーなら環境変数を確認 |
+| アプリが起動しない | SSM でサーバーに入り `cd /opt/app && docker compose logs app` を確認。DB 接続エラーなら、`.env`(`DB_HOST` など)と、RDS のセキュリティグループ(EC2 から 5432 を許可)を確認。`.\scripts\check-rds.ps1` で EC2 から RDS に届くかを切り分けられる |
+| `/opt/app/.env` が無い、caddy が起動していない | 初期設定(`user_data`)が失敗している。`/var/log/cloud-init-output.log` を確認。DB パスワードを SSM から取得できないときは「failed to read the DB password」と出る(IAM の権限を確認) |
 
 #### SSM が Online にならないとき
 
@@ -573,7 +596,7 @@ aws ssm start-session --target <instance-id> --profile taskmgmt
 
 | 課題 | 内容 |
 |---|---|
-| RDS 化 | DB をマネージドにして、バックアップや障害対応を AWS に任せる |
+| RDS のバックアップと冗長化 | 自動バックアップ・スナップショットの保持、Multi-AZ。今はデータを残さない設定(6章) |
 | ALB + ACM + 独自ドメイン | ロードバランサーと正式な証明書。複数台にするならセッションの外部化も必要 |
 | Terraform の state を S3 に | チームや複数PCでも安全に共有する(ロックは DynamoDB 不要の S3 ネイティブロックを検討) |
 | GitHub Actions から自動デプロイ | AWS の認証に OIDC を使い、キーを置かずにデプロイ |

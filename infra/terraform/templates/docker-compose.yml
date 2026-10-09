@@ -1,0 +1,40 @@
+# サーバー上の /opt/app/docker-compose.yml になる。
+# 値は同じ場所の .env(user_data が生成、権限600)から読む。
+# DB は RDS(第2段階)を使うので、db コンテナは持たない。
+services:
+  app:
+    image: eclipse-temurin:25-jre
+    restart: unless-stopped
+    working_dir: /app
+    command: ["java", "-jar", "/app/app.jar"]
+    volumes:
+      - /opt/app/app.jar:/app/app.jar:ro
+    environment:
+      # RDS は SSL 必須(PostgreSQL 15 以降の既定)。暗号化して接続する
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}?sslmode=require
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      # 1GB のサーバーで caddy と同居するため、Java のメモリを抑える
+      JAVA_TOOL_OPTIONS: -Xmx384m -Xss512k
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_HOST: ${APP_HOST}
+    volumes:
+      - /opt/app/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
