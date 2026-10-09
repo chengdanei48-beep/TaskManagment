@@ -290,11 +290,11 @@ $env:AWS_PROFILE = "taskmgmt"
 >
 > | 段階 | 作るもの | 確認すること | 状態 |
 > |---|---|---|---|
-> | 1 | EC2(サーバー)、固定IP、セキュリティグループ、IAM(SSM 接続のみ)、予算アラート | SSM で入れる、Docker が動く、swap がある、外から80番に届く | **現在のコード** |
-> | 2 | RDS(PostgreSQL) | EC2 から接続できる | これから |
+> | 1 | EC2(サーバー)、固定IP、セキュリティグループ、IAM(SSM 接続のみ)、予算アラート | SSM で入れる、Docker が動く、swap がある、外から80番に届く | 完了 |
+> | 2 | RDS(PostgreSQL)、DB パスワードの保管(SSM Parameter Store) | EC2 から RDS に接続できる(`scripts/check-rds.ps1`) | **現在のコード** |
 > | 3 | アプリのデプロイ(S3、Docker Compose、Caddy、`scripts/deploy.ps1`) | 画面が開き、登録・ログインできる | これから |
 >
-> 段階2・3で使うコード(S3、DB パスワードの保管、docker-compose、Caddy など)は、第1段階では外してあります。Git の履歴(PR #64・#66)に残っているので、そこから戻せます。
+> 段階3で使うコード(S3、docker-compose、Caddy など)は、第1・2段階では外してあります。Git の履歴(PR #64・#66)に残っているので、そこから戻せます。ただし以前の DB は EC2 上の Docker の Postgres で、RDS を使う第3段階では `db` コンテナを外し、接続先を RDS にする必要があります。
 
 **第2段階(RDS)の設計方針:** 毎回作り直す運用で、データは残さない前提です。
 
@@ -307,19 +307,21 @@ $env:AWS_PROFILE = "taskmgmt"
 | サブネットグループ | デフォルトVPCの既存サブネット(複数AZ)を束ねる。サブネットは新規作成しない | RDS は2つ以上のAZのサブネットが必須で、デフォルトVPCには既に各AZにある |
 | 初期データ | 作り直すたびに空 | Flyway がアプリ起動時にテーブルを作る。シードデータ(`db/seed`)は本番では入らない |
 
-`infra/terraform/` の構成(第1段階):
+`infra/terraform/` の構成(第2段階):
 
 | ファイル | 内容 |
 |---|---|
-| `versions.tf` | Terraform と AWS provider のバージョンの固定 |
+| `versions.tf` | Terraform と provider(AWS、random)のバージョンの固定 |
 | `providers.tf` | リージョンとプロファイルの設定 |
 | `variables.tf` | 外から渡す設定(メールアドレス等)の定義 |
 | `terraform.tfvars.example` | 設定値のひな形。コピーして `terraform.tfvars` を作る(実ファイルは Git 管理外) |
 | `network.tf` | デフォルトVPCの参照、セキュリティグループ(80/443を指定した接続元だけ許可) |
 | `ec2.tf` | EC2、Elastic IP、ディスク |
-| `iam.tf` | EC2 用の IAM ロール(SSM 接続だけ許可) |
+| `iam.tf` | EC2 用の IAM ロール(SSM 接続と、DB パスワードの読み取りだけ許可) |
+| `rds.tf` | RDS(PostgreSQL)、DB サブネットグループ、DB 用セキュリティグループ(5432 を EC2 からだけ許可) |
+| `ssm.tf` | DB パスワードを自動生成し、SSM Parameter Store(SecureString)に保管 |
 | `budget.tf` | $1 を超えそうならメール通知 |
-| `outputs.tf` | 公開IP、インスタンスID、SSM 接続コマンドを表示 |
+| `outputs.tf` | 公開IP、インスタンスID、SSM 接続コマンド、RDS の接続先を表示 |
 | `templates/user_data.sh` | 初回起動時の初期設定(swap と Docker の導入) |
 
 > `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。のちにデータが入るためです。`templates/` を変えても既存のサーバーには反映されません。
@@ -344,7 +346,7 @@ $env:AWS_PROFILE = "taskmgmt"
 
 すべて PowerShell(プロジェクトのルートから)で行います。
 
-> 現在のコードは **第1段階(EC2 の土台のみ)** です。7.1 の構築のあと、7.1b の動作確認までを行います。7.2 以降(アプリのデプロイ)は、第3段階のコードを戻してから実行します。
+> 現在のコードは **第2段階(EC2 と RDS)** です。7.1 の構築のあと、7.1b(EC2)と 7.1c(RDS)の動作確認までを行います。7.2 以降(アプリのデプロイ)は、第3段階のコードを戻してから実行します。
 
 ### 7.1 初回構築
 
@@ -385,7 +387,29 @@ terraform apply tfplan            # ← 確認後に実行
 | swap・メモリ・ディスク | swap が約1GB、ディスクが約20GB |
 | cloud-init の状態 | `status: done`(初期設定がエラーなく完了) |
 
-確認ページを立てる処理で `caddy:2` イメージを取得するため、サーバーからインターネットへ出られることの確認にもなります。許可していないIP(スマホ回線など)から開けないことも、任意で確認できます。確認できたら次の段階(RDS)へ進みます。止めるなら `terraform destroy`(7.5)で消します。
+確認ページを立てる処理で `caddy:2` イメージを取得するため、サーバーからインターネットへ出られることの確認にもなります。許可していないIP(スマホ回線など)から開けないことも、任意で確認できます。確認できたら 7.1c へ進みます。止めるなら `terraform destroy`(7.5)で消します。
+
+### 7.1c 第2段階の動作確認(RDS)
+
+RDS は VPC の中からだけ届き、このPCからは直接つながりません。そのため、SSM 経由で **EC2 から RDS に接続** して確認します。
+
+```powershell
+.\scripts\check-rds.ps1
+```
+
+スクリプトは、SSM Parameter Store から DB パスワードを取り出し(画面には出しません)、サーバー上で `postgres:17-alpine` の `psql` を使って次を問い合わせます。
+
+| 表示 | 分かること |
+|---|---|
+| `version` | PostgreSQL 17 系が動いている |
+| `database` / `user` | `taskmanagement` で接続できた(パスワードの保管と読み取りが動いている) |
+| `client addr` | EC2 のプライベートIPから届いている(セキュリティグループが効いている) |
+| `ssl` | `on`(通信が暗号化されている) |
+
+最後に `EC2 から RDS に接続できました。` と出れば成功です。
+
+- **RDS の作成には 10 分ほどかかります。** `terraform apply` はその完了まで待ちます。
+- **RDS は作っている間も課金されます。** 確認が済んだら、すぐ `aws-down.ps1` で消します(スナップショットは残しません)。
 
 ### 7.2 アプリのデプロイ(第3段階)
 
@@ -436,7 +460,7 @@ terraform destroy
 | 確認 | どちらも **`yes` と入力したときだけ** 実行します。それ以外は何も変更しません。 |
 | ログイン | SSO が切れていれば、`aws sso login` を自動で促します(ブラウザで「許可」を押す)。 |
 | 接続元IP | `aws-up.ps1` が、今のPCの公開IPを `terraform.tfvars` の `allowed_cidrs` に自動で反映します。 |
-| 消し残しの確認 | `aws-down.ps1` が、`Project=taskmgmt` のタグが付いた EC2・Elastic IP・セキュリティグループが残っていないかを問い合わせます。 |
+| 消し残しの確認 | `aws-down.ps1` が、`Project=taskmgmt` のタグが付いた EC2・Elastic IP・セキュリティグループと、`taskmgmt` で始まる RDS・RDS スナップショットが残っていないかを問い合わせます。 |
 
 使うときの注意:
 

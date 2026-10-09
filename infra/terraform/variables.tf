@@ -44,3 +44,27 @@ variable "budget_limit_usd" {
   type        = number
   default     = 1
 }
+
+variable "db_instance_class" {
+  description = "RDS のインスタンスクラス。学習用なので最小クラス"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_storage_gb" {
+  description = "RDS のディスク容量(GB)。gp3 の最小は 20"
+  type        = number
+  default     = 20
+}
+
+variable "db_name" {
+  description = "RDS 内に作るデータベース名(開発用 docker-compose と同じ)"
+  type        = string
+  default     = "taskmanagement"
+}
+
+variable "db_username" {
+  description = "RDS のマスターユーザー名(開発用 docker-compose と同じ)"
+  type        = string
+  default     = "taskmanagement"
+}
