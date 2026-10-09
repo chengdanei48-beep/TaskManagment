@@ -502,6 +502,7 @@ docker compose logs --tail 100 を確認し、原因を教えてください。
 |---|---|
 | `The SSO session ... has expired` / `Token has expired` | ログイン切れ。`aws sso login --profile taskmgmt` |
 | `Unable to locate credentials` | プロファイル未指定。`--profile taskmgmt` か `$env:AWS_PROFILE` を設定 |
+| `check-ec2.ps1` が「SSM が Online になりません」で止まる(待機中の表示が `None` のまま) | 作った直後に SSM エージェントが登録に失敗することがある(IAM 権限の反映が間に合わなかったためと考えられる)。**インスタンスを再起動すると、数十秒で Online になる。** 手順は下の「SSM が Online にならないとき」 |
 | `InvalidParameterCombination` / インスタンスタイプが使えない | Free プランの対象外のサイズ。`t3.micro` か、その時点で案内されている対象サイズに変える(AWS の無料枠案内を確認) |
 | `terraform apply` が権限エラー | アクセス許可セットの権限不足(4章)。IAM の作成権限が必要 |
 | Budgets の作成でエラー | アカウントで請求情報へのアクセスが有効か確認 |
@@ -509,6 +510,28 @@ docker compose logs --tail 100 を確認し、原因を教えてください。
 | 警告「この接続ではプライバシーが保護されません」 | `tls_internal = true`(自己署名証明書)のとき正常。「詳細設定」→「進む」で開く |
 | 画面は出るがログインできない | Cookie の Secure 設定と HTTPS の認識を確認(`SERVER_FORWARD_HEADERS_STRATEGY`)。`http://` ではなく `https://` で開く |
 | アプリが起動しない | SSM でサーバーに入り `docker compose logs app` を確認。DB 接続エラーなら環境変数を確認 |
+
+#### SSM が Online にならないとき
+
+先に、設定の誤りがないかを確認します。次の3つが正しければ、起動直後の一時的な失敗です。
+
+```powershell
+$p = '--profile','taskmgmt','--region','ap-northeast-1'
+# 1. インスタンスが running で、IAM インスタンスプロファイルが付いている
+aws ec2 describe-instances --instance-ids <instance-id> @p --query 'Reservations[0].Instances[0].[State.Name,IamInstanceProfile.Arn]' --output text
+# 2. ロールに AmazonSSMManagedInstanceCore が付いている
+aws iam list-attached-role-policies --role-name taskmgmt-app --profile taskmgmt --output text
+# 3. 初期設定(cloud-init)が終わり、外へ通信できている(dnf で Docker が入っていれば OK)
+aws ec2 get-console-output --instance-id <instance-id> @p --latest --output text | Select-Object -Last 20
+```
+
+問題がなければ、再起動して Online になるのを待ちます。作ったばかりのサーバーなので、データは消えません。公開IPも変わりません。
+
+```powershell
+aws ec2 reboot-instances --instance-ids <instance-id> @p
+aws ssm describe-instance-information @p --query 'InstanceInformationList[].PingStatus' --output text   # Online になるまで繰り返す
+.\scripts\check-ec2.ps1
+```
 
 サーバーに入る方法(SSH 不要):
 
