@@ -24,7 +24,7 @@ locals {
 resource "aws_instance" "app" {
   ami                    = data.aws_ssm_parameter.al2023.value
   instance_type          = var.instance_type
-  subnet_id              = data.aws_subnets.default.ids[0]
+  subnet_id              = sort(data.aws_subnets.default.ids)[0] # ids の順序は保証されないので、sort で固定(変わると作り直しになる)
   vpc_security_group_ids = [aws_security_group.web.id]
   iam_instance_profile   = aws_iam_instance_profile.app.name
 

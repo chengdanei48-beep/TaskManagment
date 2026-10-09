@@ -17,7 +17,7 @@ variable "project_name" {
 }
 
 variable "instance_type" {
-  description = "EC2 のインスタンスタイプ。Free プランで使える種類かは AWS の案内で確認する"
+  description = "EC2 のインスタンスタイプ。Free プランで使える種類かは AWS の案内で確認する。AMI と Docker Compose が x86_64 なので、Graviton(t4g など)は指定できない"
   type        = string
   default     = "t3.micro"
 }

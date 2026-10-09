@@ -482,7 +482,7 @@ aws s3api list-buckets --profile taskmgmt --query 'Buckets[].Name'            # 
 | 確認 | どちらも **`yes` と入力したときだけ** 実行します。それ以外は何も変更しません。 |
 | ログイン | SSO が切れていれば、`aws sso login` を自動で促します(ブラウザで「許可」を押す)。 |
 | 接続元IP | `aws-up.ps1` が、今のPCの公開IPを `terraform.tfvars` の `allowed_cidrs` に自動で反映します。 |
-| 消し残しの確認 | `aws-down.ps1` が、`Project=taskmgmt` のタグが付いた EC2・Elastic IP・セキュリティグループと、`taskmgmt` で始まる RDS・RDS スナップショットが残っていないかを問い合わせます。 |
+| 消し残しの確認 | `aws-down.ps1` が、`Project=taskmgmt` のタグが付いた EC2・Elastic IP・セキュリティグループと、`taskmgmt` で始まる RDS・RDS スナップショット・S3 バケット・SSM パラメータ、リージョン内の EBS ボリュームが残っていないかを問い合わせます。 |
 
 使うときの注意:
 
@@ -553,7 +553,7 @@ docker compose logs --tail 100 を確認し、原因を教えてください。
 | `terraform apply` が権限エラー | アクセス許可セットの権限不足(4章)。IAM の作成権限が必要 |
 | Budgets の作成でエラー | アカウントで請求情報へのアクセスが有効か確認 |
 | `https://...` が開かない(証明書エラー) | 起動直後は証明書の取得に数分かかる。続く場合は Caddy のログを確認。Let's Encrypt は同じホスト名の再取得に回数制限あり。`allowed_cidrs` で接続元を絞ると、公開証明書を取得できないため、自動で自己署名証明書(`tls_internal`)になります |
-| 警告「この接続ではプライバシーが保護されません」 | `tls_internal = true`(自己署名証明書)のとき正常。「詳細設定」→「進む」で開く |
+| 警告「この接続ではプライバシーが保護されません」 | 自己署名証明書(`allowed_cidrs` を絞ったとき、`terraform output tls_internal` が `true`)なら正常。「詳細設定」→「進む」で開く |
 | 画面は出るがログインできない | Cookie の Secure 設定と HTTPS の認識を確認(`SERVER_FORWARD_HEADERS_STRATEGY`)。`http://` ではなく `https://` で開く |
 | アプリが起動しない | SSM でサーバーに入り `cd /opt/app && docker compose logs app` を確認。DB 接続エラーなら、`.env`(`DB_HOST` など)と、RDS のセキュリティグループ(EC2 から 5432 を許可)を確認。`.\scripts\check-rds.ps1` で EC2 から RDS に届くかを切り分けられる |
 | `/opt/app/.env` が無い、caddy が起動していない | 初期設定(`user_data`)が失敗している。`/var/log/cloud-init-output.log` を確認。DB パスワードを SSM から取得できないときは「failed to read the DB password」と出る(IAM の権限を確認) |

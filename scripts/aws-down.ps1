@@ -56,6 +56,13 @@ $addresses = aws ec2 describe-addresses --profile $Profile --region $Region `
 $groups = aws ec2 describe-security-groups --profile $Profile --region $Region `
   --filters 'Name=tag:Project,Values=taskmgmt' --query 'SecurityGroups[].GroupId' --output text
 
+# EBS はタグが付かないことがあるため、リージョン内の全ボリュームを見る(このアカウントは学習用)
+$volumes = aws ec2 describe-volumes --profile $Profile --region $Region `
+  --query 'Volumes[].VolumeId' --output text
+$buckets = aws s3api list-buckets --profile $Profile `
+  --query "Buckets[?starts_with(Name, 'taskmgmt-')].Name" --output text
+$parameters = aws ssm describe-parameters --profile $Profile --region $Region `
+  --parameter-filters 'Key=Name,Option=BeginsWith,Values=/taskmgmt/' --query 'Parameters[].Name' --output text
 $databases = aws rds describe-db-instances --profile $Profile --region $Region `
   --query "DBInstances[?starts_with(DBInstanceIdentifier, 'taskmgmt')].DBInstanceIdentifier" --output text
 $snapshots = aws rds describe-db-snapshots --profile $Profile --region $Region `
@@ -66,8 +73,11 @@ $snapshots = aws rds describe-db-snapshots --profile $Profile --region $Region `
 "  セキュリティグループ: $(if ($groups) { $groups } else { 'なし' })"
 "  RDS              : $(if ($databases) { $databases } else { 'なし' })"
 "  RDS スナップショット: $(if ($snapshots) { $snapshots } else { 'なし' })"
+"  EBS ボリューム   : $(if ($volumes) { $volumes } else { 'なし' })"
+"  S3 バケット      : $(if ($buckets) { $buckets } else { 'なし' })"
+"  SSM パラメータ   : $(if ($parameters) { $parameters } else { 'なし' })"
 
-if ($instances -or $addresses -or $groups -or $databases -or $snapshots) {
+if ($instances -or $addresses -or $groups -or $databases -or $snapshots -or $volumes -or $buckets -or $parameters) {
   Write-Host '消し残しがあります。上のIDをAIに伝えて確認してください。' -ForegroundColor Red
 } else {
   Write-Host 'すべて削除されました。課金は止まっています。' -ForegroundColor Green

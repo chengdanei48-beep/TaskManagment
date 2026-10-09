@@ -68,4 +68,4 @@ try {
   Pop-Location
 }
 
-Write-Host '完了。動作確認: .\scripts\check-ec2.ps1(終わったら -Stop)。使い終わったら .\scripts\aws-down.ps1 で消してください。' -ForegroundColor Green
+Write-Host '完了。次: .\scripts\deploy.ps1 でアプリをデプロイ(RDS への接続確認だけなら .\scripts\check-rds.ps1)。使い終わったら .\scripts\aws-down.ps1 で消してください。' -ForegroundColor Green
