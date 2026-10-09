@@ -21,27 +21,6 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# jar の取得と DB パスワードの読み取りだけ許可する
-data "aws_iam_policy_document" "app_access" {
-  statement {
-    sid       = "ReadArtifacts"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.artifacts.arn}/*"]
-  }
-
-  statement {
-    sid       = "ReadDbPassword"
-    actions   = ["ssm:GetParameter"]
-    resources = [aws_ssm_parameter.db_password.arn]
-  }
-}
-
-resource "aws_iam_role_policy" "app_access" {
-  name   = "${var.project_name}-app-access"
-  role   = aws_iam_role.app.id
-  policy = data.aws_iam_policy_document.app_access.json
-}
-
 resource "aws_iam_instance_profile" "app" {
   name = "${var.project_name}-app"
   role = aws_iam_role.app.name

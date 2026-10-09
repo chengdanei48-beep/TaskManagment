@@ -34,12 +34,6 @@ variable "allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "tls_internal" {
-  description = "true にすると Caddy が自己署名証明書を使う。allowed_cidrs で接続元を絞ると公開証明書(Let's Encrypt)を取得できないため、その場合に true にする。ブラウザに警告が出る"
-  type        = bool
-  default     = false
-}
-
 variable "budget_email" {
   description = "予算超過の通知先メールアドレス"
   type        = string
@@ -49,16 +43,4 @@ variable "budget_limit_usd" {
   description = "月の予算(USD)。超えそう・超えたときにメールで知らせる"
   type        = number
   default     = 1
-}
-
-variable "db_name" {
-  description = "PostgreSQL のデータベース名"
-  type        = string
-  default     = "taskmanagement"
-}
-
-variable "db_user" {
-  description = "PostgreSQL のユーザー名"
-  type        = string
-  default     = "taskmanagement"
 }
