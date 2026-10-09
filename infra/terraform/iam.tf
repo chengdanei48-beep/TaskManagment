@@ -21,8 +21,14 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# EC2 が DB パスワード(SSM パラメータ)だけ読めるようにする
+# EC2 が jar(S3)と DB パスワード(SSM パラメータ)だけ読めるようにする
 data "aws_iam_policy_document" "app_access" {
+  statement {
+    sid       = "ReadArtifacts"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.artifacts.arn}/*"]
+  }
+
   statement {
     sid       = "ReadDbPassword"
     actions   = ["ssm:GetParameter"]
