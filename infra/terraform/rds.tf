@@ -1,0 +1,63 @@
+# RDS(PostgreSQL)。毎回作り直す運用で、データは残さない方針(docs/aws-deploy-guide.md 6章)。
+
+# RDS は2つ以上の AZ のサブネットが必須。デフォルトVPCには各AZにサブネットがあるので、それを束ねる。
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.project_name}-db"
+  subnet_ids = data.aws_subnets.default.ids
+
+  tags = {
+    Name = "${var.project_name}-db"
+  }
+}
+
+# DB には EC2(web の SG)からの 5432 だけ許可する。インターネットからは届かない。
+resource "aws_security_group" "db" {
+  name        = "${var.project_name}-db"
+  description = "Allow PostgreSQL from the app server only"
+  vpc_id      = data.aws_vpc.default.id
+
+  tags = {
+    Name = "${var.project_name}-db"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
+  security_group_id            = aws_security_group.db.id
+  description                  = "PostgreSQL from app server"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.web.id
+}
+
+resource "aws_db_instance" "main" {
+  identifier = "${var.project_name}-db"
+
+  engine         = "postgres"
+  engine_version = "17" # docker-compose.yml(開発用)の postgres:17 に合わせる
+  instance_class = var.db_instance_class
+
+  allocated_storage = var.db_storage_gb
+  storage_type      = "gp3"
+  storage_encrypted = true
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = random_password.db.result
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  publicly_accessible    = false
+  multi_az               = false
+
+  # 毎回作り直す運用で、データは残さない
+  skip_final_snapshot     = true
+  backup_retention_period = 0
+  deletion_protection     = false
+
+  apply_immediately = true
+
+  tags = {
+    Name = "${var.project_name}-db"
+  }
+}

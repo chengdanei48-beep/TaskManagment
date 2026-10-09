@@ -56,11 +56,18 @@ $addresses = aws ec2 describe-addresses --profile $Profile --region $Region `
 $groups = aws ec2 describe-security-groups --profile $Profile --region $Region `
   --filters 'Name=tag:Project,Values=taskmgmt' --query 'SecurityGroups[].GroupId' --output text
 
+$databases = aws rds describe-db-instances --profile $Profile --region $Region `
+  --query "DBInstances[?starts_with(DBInstanceIdentifier, 'taskmgmt')].DBInstanceIdentifier" --output text
+$snapshots = aws rds describe-db-snapshots --profile $Profile --region $Region `
+  --query "DBSnapshots[?starts_with(DBInstanceIdentifier, 'taskmgmt')].DBSnapshotIdentifier" --output text
+
 "  EC2 インスタンス : $(if ($instances) { $instances } else { 'なし' })"
 "  Elastic IP       : $(if ($addresses) { $addresses } else { 'なし' })"
 "  セキュリティグループ: $(if ($groups) { $groups } else { 'なし' })"
+"  RDS              : $(if ($databases) { $databases } else { 'なし' })"
+"  RDS スナップショット: $(if ($snapshots) { $snapshots } else { 'なし' })"
 
-if ($instances -or $addresses -or $groups) {
+if ($instances -or $addresses -or $groups -or $databases -or $snapshots) {
   Write-Host '消し残しがあります。上のIDをAIに伝えて確認してください。' -ForegroundColor Red
 } else {
   Write-Host 'すべて削除されました。課金は止まっています。' -ForegroundColor Green
