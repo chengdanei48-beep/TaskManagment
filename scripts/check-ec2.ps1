@@ -57,6 +57,8 @@ if ($Stop) {
 } else {
   $shell = @'
 set -e
+# 起動直後は初期設定(Docker の導入)の途中なので、終わるまで待つ(最大90秒。足りなければ再実行する)
+timeout 90 cloud-init status --wait >/dev/null 2>&1 || true
 mkdir -p /opt/check
 TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
 md() { curl -s -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/$1"; }
@@ -109,7 +111,10 @@ Write-Host '== 2/3 サーバーに指示 ==' -ForegroundColor Cyan
 $lines = ($shell -replace "`r", '') -split "`n"
 $paramFile = Join-Path ([System.IO.Path]::GetTempPath()) 'taskmgmt-check-params.json'
 $json = (@{ commands = $lines } | ConvertTo-Json -Compress)
-[System.IO.File]::WriteAllText($paramFile, $json, (New-Object System.Text.UTF8Encoding($false)))
+# AWS CLI は paramfile を OS の文字コード(日本語 Windows では cp932)で読むため、
+# 日本語を \uXXXX に置き換えて ASCII だけのファイルにする
+$json = [regex]::Replace($json, '[^\x00-\x7F]', { param($m) '\u{0:x4}' -f [int][char]$m.Value })
+[System.IO.File]::WriteAllText($paramFile, $json, (New-Object System.Text.ASCIIEncoding))
 
 try {
   $commandId = aws ssm send-command `
