@@ -286,9 +286,17 @@ $env:AWS_PROFILE = "taskmgmt"
 
 ## 6. Terraform コードの読み方
 
-> コードは Issue #62 で追加します。ここでは「どのファイルが何をするか」を説明します。
+> **段階的に進めます。** 一度に全部を作らず、動作確認をしながら順に増やします。
+>
+> | 段階 | 作るもの | 確認すること | 状態 |
+> |---|---|---|---|
+> | 1 | EC2(サーバー)、固定IP、セキュリティグループ、IAM(SSM 接続のみ)、予算アラート | SSM で入れる、Docker が動く、swap がある、外から80番に届く | **現在のコード** |
+> | 2 | RDS(PostgreSQL) | EC2 から接続できる | これから |
+> | 3 | アプリのデプロイ(S3、Docker Compose、Caddy、`scripts/deploy.ps1`) | 画面が開き、登録・ログインできる | これから |
+>
+> 段階2・3で使うコード(S3、DB パスワードの保管、docker-compose、Caddy など)は、第1段階では外してあります。Git の履歴(PR #64・#66)に残っているので、そこから戻せます。
 
-`infra/terraform/` の構成:
+`infra/terraform/` の構成(第1段階):
 
 | ファイル | 内容 |
 |---|---|
@@ -296,16 +304,14 @@ $env:AWS_PROFILE = "taskmgmt"
 | `providers.tf` | リージョンとプロファイルの設定 |
 | `variables.tf` | 外から渡す設定(メールアドレス等)の定義 |
 | `terraform.tfvars.example` | 設定値のひな形。コピーして `terraform.tfvars` を作る(実ファイルは Git 管理外) |
-| `network.tf` | デフォルトVPCの参照、セキュリティグループ(80/443だけ許可) |
-| `ec2.tf` | EC2、Elastic IP、ディスク、起動時の初期設定(Docker の導入と起動) |
-| `iam.tf` | EC2 用の IAM ロール(SSM 接続と、自分のバケット・パラメータの読み取りだけ許可) |
-| `s3.tf` | jar 置き場のバケット(暗号化、公開ブロック) |
-| `ssm.tf` | DB パスワードを自動生成して SecureString で保管 |
+| `network.tf` | デフォルトVPCの参照、セキュリティグループ(80/443を指定した接続元だけ許可) |
+| `ec2.tf` | EC2、Elastic IP、ディスク |
+| `iam.tf` | EC2 用の IAM ロール(SSM 接続だけ許可) |
 | `budget.tf` | $1 を超えそうならメール通知 |
-| `outputs.tf` | 公開URL、インスタンスID、バケット名を表示 |
-| `templates/` | サーバー上に置く `docker-compose.yml`・`Caddyfile.tftpl`(`tls_internal` で自己署名証明書に切り替え)と、初回起動時の初期設定スクリプト `user_data.sh.tftpl` |
+| `outputs.tf` | 公開IP、インスタンスID、SSM 接続コマンドを表示 |
+| `templates/user_data.sh` | 初回起動時の初期設定(swap と Docker の導入) |
 
-> `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。DB のデータが消えるのを防ぐためです。`templates/` を変えても既存のサーバーには反映されません。
+> `ec2.tf` では、サーバーを作り直さないよう `user_data`(初期設定)の変更を無視する設定にしています。のちにデータが入るためです。`templates/` を変えても既存のサーバーには反映されません。
 
 ### アプリを AWS で動かすための設定(環境変数)
 
@@ -327,6 +333,8 @@ $env:AWS_PROFILE = "taskmgmt"
 
 すべて PowerShell(プロジェクトのルートから)で行います。
 
+> 現在のコードは **第1段階(EC2 の土台のみ)** です。7.1 の構築のあと、7.1b の動作確認までを行います。7.2 以降(アプリのデプロイ)は、第3段階のコードを戻してから実行します。
+
 ### 7.1 初回構築
 
 ```powershell
@@ -346,7 +354,29 @@ terraform apply tfplan            # ← 確認後に実行
 - 作られる資源の種類に、**NAT Gateway・Load Balancer・RDS が含まれていない** こと
 - EC2 のインスタンスタイプが `t3.micro` であること
 
-### 7.2 アプリのデプロイ
+### 7.1b 第1段階の動作確認(EC2 のみ)
+
+`terraform apply` のあと、サーバーが期待どおりかを **ブラウザの画面で** 確認します。
+
+```powershell
+.\scripts\check-ec2.ps1          # 確認ページを立てる → 表示された URL をブラウザで開く
+.\scripts\check-ec2.ps1 -Stop    # 確認が済んだら止める
+```
+
+スクリプトは SSM 経由で、サーバー上に一時的な確認ページ(Caddy コンテナ)を立てます。ページには次が表示されます。
+
+| 表示 | 分かること |
+|---|---|
+| 「EC2 に外から届いています」 | セキュリティグループ(80番)・Elastic IP が動いている |
+| あなたのIP(サーバーから見た) | 許可した接続元(`allowed_cidrs`)と一致しているか |
+| インスタンスID・タイプ・AZ・公開IP | 想定どおりの EC2 か(`t3.micro`) |
+| Docker のバージョン | 初期設定(`user_data`)で Docker が入った |
+| swap・メモリ・ディスク | swap が約1GB、ディスクが約20GB |
+| cloud-init の状態 | `status: done`(初期設定がエラーなく完了) |
+
+確認ページを立てる処理で `caddy:2` イメージを取得するため、サーバーからインターネットへ出られることの確認にもなります。許可していないIP(スマホ回線など)から開けないことも、任意で確認できます。確認できたら次の段階(RDS)へ進みます。止めるなら `terraform destroy`(7.5)で消します。
+
+### 7.2 アプリのデプロイ(第3段階)
 
 ```powershell
 .\scripts\deploy.ps1

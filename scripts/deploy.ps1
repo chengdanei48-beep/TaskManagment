@@ -43,6 +43,7 @@ try {
 } finally {
   Pop-Location
 }
+if (-not $out.artifact_bucket) { throw 'このスクリプトは最終段階(アプリのデプロイ)用です。S3 などを含む段階のTerraformがまだ適用されていません。' }
 $bucket = $out.artifact_bucket.value
 $instanceId = $out.instance_id.value
 $appUrl = $out.app_url.value
