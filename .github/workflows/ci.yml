@@ -61,3 +61,22 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  terraform:
+    name: Terraform (Format / Validate)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.16"
+      # AWS の認証は使わない(backend なし・plan はしない)。構文と整形だけを確認する
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Init
+        run: terraform init -input=false -backend=false
+      - name: Validate
+        run: terraform validate

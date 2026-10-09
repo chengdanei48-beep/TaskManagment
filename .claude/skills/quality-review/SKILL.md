@@ -40,7 +40,7 @@ cd infra/terraform && terraform plan -input=false -out tfplan   # 要 aws sso lo
 - `plan` の末尾 `Plan: N to add, M to change, K to destroy.` と、作られる資源の種類を読む(下の「費用」の観点)。確認後は `tfplan` を削除する。**`apply` / `destroy` は、ユーザーの承認なしに実行しない**(`docs/aws-deploy-guide.md` 8章)。
 - 静的解析ツール(`tflint`、`trivy config`、`checkov`)が入っていれば実行する。未導入なら、その旨を報告し、下の観点を目視で点検する。
 - PowerShell スクリプトは `PSScriptAnalyzer`(`Invoke-ScriptAnalyzer -Path scripts`)が使えれば実行する。
-- 現状、CI(`.github/workflows/ci.yml`)には Terraform の検査がない。変更が入る PR では、`fmt -check` と `validate` の実行結果を PR 本文に書く。
+- CI(`.github/workflows/ci.yml` の `terraform` ジョブ)でも `fmt -check` / `init -backend=false` / `validate` を実行する。AWS の認証を使わないため、`plan` は含まない(`plan` はローカルで実行して確認する)。`tflint` などの静的解析は CI に入れていない。
 
 ## 観点チェックリスト
 
