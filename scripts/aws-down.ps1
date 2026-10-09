@@ -15,7 +15,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Profile = 'taskmgmt',
+  [string]$AwsProfile = 'taskmgmt',
   [string]$Region = 'ap-northeast-1'
 )
 
@@ -26,7 +26,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 $tfDir = Join-Path $root 'infra\terraform'
 
 Write-Host '== 1/4 ログイン確認 ==' -ForegroundColor Cyan
-Assert-AwsLogin -Profile $Profile
+Assert-AwsLogin -AwsProfile $AwsProfile
 
 Write-Host '== 2/4 消えるリソースの確認 ==' -ForegroundColor Cyan
 Push-Location $tfDir
@@ -48,24 +48,24 @@ try {
 
 # --- 消し残しの確認(Project=taskmgmt のタグが付いたもの) ---
 Write-Host '== 4/4 消し残しの確認 ==' -ForegroundColor Cyan
-$instances = aws ec2 describe-instances --profile $Profile --region $Region `
+$instances = aws ec2 describe-instances --profile $AwsProfile --region $Region `
   --filters 'Name=tag:Project,Values=taskmgmt' 'Name=instance-state-name,Values=pending,running,stopping,stopped' `
   --query 'Reservations[].Instances[].InstanceId' --output text
-$addresses = aws ec2 describe-addresses --profile $Profile --region $Region `
+$addresses = aws ec2 describe-addresses --profile $AwsProfile --region $Region `
   --filters 'Name=tag:Project,Values=taskmgmt' --query 'Addresses[].AllocationId' --output text
-$groups = aws ec2 describe-security-groups --profile $Profile --region $Region `
+$groups = aws ec2 describe-security-groups --profile $AwsProfile --region $Region `
   --filters 'Name=tag:Project,Values=taskmgmt' --query 'SecurityGroups[].GroupId' --output text
 
 # EBS はタグが付かないことがあるため、リージョン内の全ボリュームを見る(このアカウントは学習用)
-$volumes = aws ec2 describe-volumes --profile $Profile --region $Region `
+$volumes = aws ec2 describe-volumes --profile $AwsProfile --region $Region `
   --query 'Volumes[].VolumeId' --output text
-$buckets = aws s3api list-buckets --profile $Profile `
+$buckets = aws s3api list-buckets --profile $AwsProfile `
   --query "Buckets[?starts_with(Name, 'taskmgmt-')].Name" --output text
-$parameters = aws ssm describe-parameters --profile $Profile --region $Region `
+$parameters = aws ssm describe-parameters --profile $AwsProfile --region $Region `
   --parameter-filters 'Key=Name,Option=BeginsWith,Values=/taskmgmt/' --query 'Parameters[].Name' --output text
-$databases = aws rds describe-db-instances --profile $Profile --region $Region `
+$databases = aws rds describe-db-instances --profile $AwsProfile --region $Region `
   --query "DBInstances[?starts_with(DBInstanceIdentifier, 'taskmgmt')].DBInstanceIdentifier" --output text
-$snapshots = aws rds describe-db-snapshots --profile $Profile --region $Region `
+$snapshots = aws rds describe-db-snapshots --profile $AwsProfile --region $Region `
   --query "DBSnapshots[?starts_with(DBInstanceIdentifier, 'taskmgmt')].DBSnapshotIdentifier" --output text
 
 "  EC2 インスタンス : $(if ($instances) { $instances } else { 'なし' })"

@@ -26,8 +26,9 @@ masterから直接作業しない。必ずIssueに対応する専用ブランチ
 
 ## 品質レビュー
 
-PRを出す前や、全体を点検するときは、スキル `quality-review`(`.claude/skills/quality-review/SKILL.md`)のチェックリストに沿って確認する。
+PRを出す前や、全体を点検するときは、スキル `quality-review`(`.claude/skills/quality-review/SKILL.md`)のチェックリストに沿って確認する。**変更した範囲(バックエンド・フロントエンド・インフラ)ごとに、PR を出す前に必ず実施する。** 結果は PR 本文に書く。
 バックエンドは `./mvnw verify`、フロントエンドは `npm run lint` / `npm run typecheck` / `npm run build` が通ること(CIでも実行される)。
+インフラ(`infra/terraform/`)は `terraform fmt -check -recursive` / `terraform validate` / `tflint` / `trivy config`、スクリプト(`scripts/*.ps1`)は PSScriptAnalyzer が通ること(CIでも実行される)。ツールの設定は `infra/terraform/.tflint.hcl`、`scripts/PSScriptAnalyzerSettings.psd1`。意図した設定は `#trivy:ignore:AWS-xxxx` と理由のコメントで除外する。`terraform apply` / `destroy` は、ユーザーの承認なしに実行しない(`docs/aws-deploy-guide.md` 8章)。
 
 ## 動作確認でのサーバー起動(厳守)
 

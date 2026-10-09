@@ -30,6 +30,13 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
   referenced_security_group_id = aws_security_group.web.id
 }
 
+# 除外の理由(すべて「使うときだけ作り、終わったら消す」学習用の運用と、アプリの方式による):
+# - AWS-0077: 自動バックアップなし。データを残さない方針(docs/aws-deploy-guide.md 6章)
+# - AWS-0177: 削除保護なし。terraform destroy / aws-down.ps1 で消せるようにする
+# - AWS-0176: IAM 認証なし。アプリ(Spring Boot)はパスワード認証で、パスワードは SSM に暗号化して保管している
+#trivy:ignore:AWS-0077
+#trivy:ignore:AWS-0177
+#trivy:ignore:AWS-0176
 resource "aws_db_instance" "main" {
   identifier = "${var.project_name}-db"
 

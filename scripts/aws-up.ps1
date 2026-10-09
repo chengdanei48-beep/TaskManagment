@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Profile = 'taskmgmt'
+  [string]$AwsProfile = 'taskmgmt'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,7 +27,7 @@ $tfDir = Join-Path $root 'infra\terraform'
 $tfvars = Join-Path $tfDir 'terraform.tfvars'
 
 Write-Host '== 1/4 ログイン確認 ==' -ForegroundColor Cyan
-Assert-AwsLogin -Profile $Profile
+Assert-AwsLogin -AwsProfile $AwsProfile
 
 # --- 公開IPを allowed_cidrs に反映 ---
 Write-Host '== 2/4 接続元IPの確認 ==' -ForegroundColor Cyan

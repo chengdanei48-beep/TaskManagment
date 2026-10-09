@@ -18,7 +18,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Profile = 'taskmgmt',
+  [string]$AwsProfile = 'taskmgmt',
   [switch]$Stop
 )
 
@@ -44,7 +44,7 @@ $online = $false
 for ($i = 1; $i -le 30; $i++) {
   $ping = aws ssm describe-instance-information `
     --filters "Key=InstanceIds,Values=$instanceId" `
-    --query 'InstanceInformationList[0].PingStatus' --output text --profile $Profile
+    --query 'InstanceInformationList[0].PingStatus' --output text --profile $AwsProfile
   if ($ping -eq 'Online') { $online = $true; break }
   Write-Host "  待機中($i/30): $ping"
   Start-Sleep -Seconds 10
@@ -121,13 +121,13 @@ try {
     --instance-ids $instanceId `
     --document-name 'AWS-RunShellScript' `
     --parameters "file://$paramFile" `
-    --query 'Command.CommandId' --output text --profile $Profile
+    --query 'Command.CommandId' --output text --profile $AwsProfile
   if ($LASTEXITCODE -ne 0) { throw 'aws ssm send-command が失敗しました。' }
 
-  aws ssm wait command-executed --command-id $commandId --instance-id $instanceId --profile $Profile
+  aws ssm wait command-executed --command-id $commandId --instance-id $instanceId --profile $AwsProfile
   $waitOk = ($LASTEXITCODE -eq 0)
   aws ssm get-command-invocation --command-id $commandId --instance-id $instanceId `
-    --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' --output json --profile $Profile
+    --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' --output json --profile $AwsProfile
   if (-not $waitOk) { throw 'サーバー上の処理に失敗しました。上の出力を確認してください。' }
 } finally {
   Remove-Item -Path $paramFile -ErrorAction SilentlyContinue
