@@ -49,6 +49,9 @@ resource "aws_vpc_security_group_ingress_rule" "https" {
 }
 
 # サーバーから外への通信(パッケージ取得、SSM、Let's Encrypt など)はすべて許可
+# 除外の理由: NAT Gateway や VPC エンドポイントを使わない構成(課金を避ける)なので、宛先を絞れない。
+# 受信は allowed_cidrs と DB 用 SG で絞っている。
+#trivy:ignore:AWS-0104
 resource "aws_vpc_security_group_egress_rule" "all" {
   security_group_id = aws_security_group.web.id
   description       = "All outbound"

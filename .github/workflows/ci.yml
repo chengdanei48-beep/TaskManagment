@@ -80,3 +80,36 @@ jobs:
         run: terraform init -input=false -backend=false
       - name: Validate
         run: terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: TFLint init
+        run: tflint --init
+        env:
+          # プラグイン(AWS ルールセット)の取得で GitHub API の制限に当たらないようにする
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: TFLint
+        run: tflint --format compact
+      # MEDIUM 以上を失敗にする。意図した設定は .tf に `#trivy:ignore:AWS-xxxx` と理由を書いて除外する
+      - name: Trivy (misconfiguration)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra/terraform
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: "1"
+          format: table
+
+  powershell:
+    name: PowerShell (PSScriptAnalyzer)
+    # 運用スクリプトは Windows PowerShell 5.1 で実行するため、Windows で解析する
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PSScriptAnalyzer
+        shell: powershell
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+      - name: Analyze
+        shell: powershell
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path scripts -Settings scripts/PSScriptAnalyzerSettings.psd1
+          $results | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap
+          if ($results) { exit 1 }

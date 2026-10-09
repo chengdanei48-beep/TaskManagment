@@ -17,7 +17,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Profile = 'taskmgmt',
+  [string]$AwsProfile = 'taskmgmt',
   [switch]$SkipBuild
 )
 
@@ -63,7 +63,7 @@ if (-not (Test-Path $jar)) { throw "jar が見つかりません: $jar" }
 
 # --- 2. S3 へアップロード ---
 Write-Host '== 2/4 S3 へアップロード ==' -ForegroundColor Cyan
-Invoke-Native 'aws' @('s3', 'cp', $jar, "s3://$bucket/app.jar", '--profile', $Profile)
+Invoke-Native 'aws' @('s3', 'cp', $jar, "s3://$bucket/app.jar", '--profile', $AwsProfile)
 
 # --- 3. サーバーへ指示(SSM Run Command) ---
 Write-Host '== 3/4 サーバーを更新 ==' -ForegroundColor Cyan
@@ -72,7 +72,7 @@ $online = $false
 for ($i = 1; $i -le 30; $i++) {
   $ping = aws ssm describe-instance-information `
     --filters "Key=InstanceIds,Values=$instanceId" `
-    --query 'InstanceInformationList[0].PingStatus' --output text --profile $Profile
+    --query 'InstanceInformationList[0].PingStatus' --output text --profile $AwsProfile
   if ($ping -eq 'Online') { $online = $true; break }
   Write-Host "  SSM の接続待ち($i/30): $ping"
   Start-Sleep -Seconds 10
@@ -95,7 +95,7 @@ try {
     --instance-ids $instanceId `
     --document-name 'AWS-RunShellScript' `
     --parameters "file://$paramFile" `
-    --query 'Command.CommandId' --output text --profile $Profile
+    --query 'Command.CommandId' --output text --profile $AwsProfile
   if ($LASTEXITCODE -ne 0) { throw 'aws ssm send-command が失敗しました。' }
 
   # 指示が終わるまで待つ(最大10分。`aws ssm wait` は約100秒で打ち切られるため、自分で確認する)
@@ -105,14 +105,14 @@ try {
   $ErrorActionPreference = 'Continue'
   for ($i = 1; $i -le 120; $i++) {
     $status = aws ssm get-command-invocation --command-id $commandId --instance-id $instanceId `
-      --query 'Status' --output text --profile $Profile 2>$null
+      --query 'Status' --output text --profile $AwsProfile 2>$null
     if ($status -notin @('Pending', 'InProgress', 'Delayed', '')) { break }
     Start-Sleep -Seconds 5
   }
   $ErrorActionPreference = 'Stop'
   if ($status -ne 'Success') {
     aws ssm get-command-invocation --command-id $commandId --instance-id $instanceId `
-      --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' --profile $Profile
+      --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' --profile $AwsProfile
     throw "サーバー上の更新に失敗しました(状態: $status)。上の出力を確認してください。"
   }
 } finally {

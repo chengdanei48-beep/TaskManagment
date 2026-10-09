@@ -9,17 +9,17 @@ function Invoke-Native {
 
 function Assert-AwsLogin {
   # SSO のログインが有効か確認し、切れていればログインを促す
-  param([string]$Profile)
+  param([string]$AwsProfile)
   # Windows PowerShell 5.1 では、Stop 設定のまま native コマンドが stderr に出すと例外になる。
   # ここでは失敗を終了コードで判定したいので、この関数の中だけ Continue にする。
   $ErrorActionPreference = 'Continue'
 
-  $null = aws sts get-caller-identity --profile $Profile --query Account --output text 2>$null
+  $null = aws sts get-caller-identity --profile $AwsProfile --query Account --output text 2>$null
   if ($LASTEXITCODE -eq 0) { return }
 
   Write-Host 'AWS のログインが切れています。ブラウザでログインしてください。' -ForegroundColor Yellow
-  aws sso login --profile $Profile
-  $null = aws sts get-caller-identity --profile $Profile --query Account --output text 2>$null
+  aws sso login --profile $AwsProfile
+  $null = aws sts get-caller-identity --profile $AwsProfile --query Account --output text 2>$null
   if ($LASTEXITCODE -ne 0) { throw 'ログインできませんでした。aws sso login --profile taskmgmt を手動で実行して、エラーを確認してください。' }
 }
 
